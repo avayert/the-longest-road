@@ -18,6 +18,9 @@ defmodule CatanWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
+    get "/lobby/", LobbyController, :index
+    post "/lobby/", LobbyController, :create
+    get "/lobby/:id/", LobbyController, :join
   end
 
   # Other scopes may use custom stacks.

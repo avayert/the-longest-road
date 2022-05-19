@@ -1,0 +1,10 @@
+<ul>
+  <%= for lobby <- list_lobbies() do %>
+    <li><%= lobby %></li>
+  <% end %>
+</ul>
+
+<%= form_for @conn, Routes.lobby_path(@conn, :create), fn f -> %>
+  <%= text_input f, :id %>
+  <%= submit "Create new" %>
+<%= end %>
