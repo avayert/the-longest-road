@@ -9,15 +9,15 @@ defmodule Catan.Application do
   def start(_type, _args) do
     children = [
       # Start the Ecto repository
-#      Catan.Repo,
+      # Catan.Repo,
       # Start the Telemetry supervisor
       CatanWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: Catan.PubSub},
       # Start the Endpoint (http/https)
-      CatanWeb.Endpoint
+      CatanWeb.Endpoint,
       # Start a worker by calling: Catan.Worker.start_link(arg)
-      # {Catan.Worker, arg}
+      Catan.GameSupervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
