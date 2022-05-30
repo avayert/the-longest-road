@@ -1,38 +1,3 @@
-defmodule Catan.Engine.Game do
-  use GenServer
-
-  defmodule State do
-    use TypedStruct
-
-    typedstruct do
-      field :players, [%Catan.Engine.Player{}], default: []
-      
-    end
-  end
-
-  @doc """
-  Start our queue and link it.
-  This is a helper function
-  """
-  def start_link(state \\ []) do
-    GenServer.start_link(__MODULE__, state, name: __MODULE__)
-  end
-
-  @doc """
-  GenServer.init/1 callback
-  """
-  def init(state), do: {:ok, state}
-end
-
-defmodule Catan.Engine.GameMode do
-  use Behaviour
-
-  @doc """
-  Testing function
-  """
-  @callback testing(atom()) :: atom()
-end
-
 defmodule Catan.Engine.CatanStandard do
   @behaviour Catan.Engine.GameMode
 
