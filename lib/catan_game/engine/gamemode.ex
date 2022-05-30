@@ -1,6 +1,4 @@
 defmodule Catan.Engine.GameMode do
-  use Behaviour
-
   @doc """
   Testing function
   """

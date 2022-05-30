@@ -1,5 +1,9 @@
-defmodule GameCoordinator do
+defmodule Catan.GameCoordinator do
   use GenServer, restart: :transient
+
+  def init(args) do
+    {:ok, args}
+  end
 end
 
 ########################
