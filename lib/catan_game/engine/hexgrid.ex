@@ -6,7 +6,7 @@ defmodule Catan.Engine.Hexes.HexGrid do
   alias Hexes.{HexTile, HexGrid}
 
   typedstruct do
-    field :tiles, %{{integer(), integer()} => HexTile.t()}, default: %{}
+    field :tiles, %{{integer(), integer()} => {HexTile.t(), %{}}}, default: %{}
   end
 
   @type tile :: HexTile.t()
@@ -14,18 +14,14 @@ defmodule Catan.Engine.Hexes.HexGrid do
   @type coords :: {integer(), integer()}
   @type coordlike :: tile | coords
 
-  @type realtile :: {:real, tile}
-  @type faketile :: {:fake, tile}
-  @type maybetile :: realtile | faketile
-
   @type axial_offset :: {-1..1, -1..1}
   @type diag_offset :: {1, -2} | {2, -1} | {1, 1} | {-1, 2} | {-2, 1} | {-1, -1}
+  @type offset_directions ::
+          :top | :topleft | :topright | :bottom | :bottomleft | :bottomright | :left | :right
 
-  @doc "TODO"
+  defguard is_grid(item) when is_struct(item, HexGrid)
   defguard is_tile(item) when is_struct(item, HexTile)
-  @doc "TODO"
   defguard is_coords(item) when is_tuple(item) and tuple_size(item) == 2
-  @doc "TODO"
   defguard is_coordlike(item) when is_tile(item) or is_coords(item)
 
   @spec coords_from(coordlike) :: coords
@@ -39,79 +35,115 @@ defmodule Catan.Engine.Hexes.HexGrid do
     %__MODULE__{}
   end
 
-  @spec new_hexagon(integer()) :: grid
-  @doc "TODO"
-  def new_hexagon(radius) do
-    # TODO
-    new()
+  @spec init_tile(coordlike, grid) :: tile
+  defp init_tile(tile, grid) when is_coordlike(tile) and is_grid(grid) do
+    coords = coords_from(tile)
+
+    {old, {newtile, _}} =
+      Map.get_and_update(grid.tiles, coords, fn cv ->
+        {cv, {HexTile.new(coords), %{}}}
+      end)
+
+    newtile
   end
 
-  @spec s(tile) :: integer()
+  @spec put_data(coordlike, map(), grid) :: grid
   @doc "TODO"
-  def s(%HexTile{q: q, r: r}), do: -q - r
+  def put_data(tile, state, grid)
+      when is_coordlike(tile) and is_map(state) and is_grid(grid) do
+    # TODO: clean this mess up and use init_tile
+    coords = coords_from(tile)
+    {t, ts} = Map.get_lazy(grid.tiles, coords, fn -> {HexTile.new(coords), %{}} end)
+    newstate = Map.put(grid.tiles, coords, {t, Map.merge(ts, state)})
+    %HexGrid{grid | tiles: newstate}
+  end
 
-  @spec s(coords) :: integer()
-  def s({q, r} = item) when is_coords(item), do: -q - r
+  # insert_new
 
-  @spec add(coordlike, coordlike) :: {:fake, tile}
+  @spec add(coordlike, coordlike) :: tile
   @doc "TODO"
   def add(a, b) when is_coordlike(a) and is_coordlike(b) do
     {q1, r1} = coords_from(a)
     {q2, r2} = coords_from(b)
-
-    {:fake, HexTile.new({q1 + q2, r1 + r2})}
+    HexTile.new({q1 + q2, r1 + r2})
   end
 
-  @spec add(coordlike, coordlike, grid) :: maybetile
-  def add(a, b, grid) when is_coordlike(a) and is_coordlike(b) do
-    {_, tile} = add(a, b)
-    get_tile(tile, grid)
-    # case get_tile(tile, grid) do
-    #   {:real, realtile} -> {:real, realtile}
-    #   {:fake, faketile} -> {:fake, tile}
-    # end
+  @spec length(coordlike) :: integer
+  def length(a) when is_coordlike(a) do
+    tile = HexTile.new(a)
+    round((abs(tile.q) + abs(tile.r) + abs(tile.s)) / 2)
   end
 
-  @spec get_tile(coordlike, grid) :: maybetile
+  @spec sub(coordlike, coordlike) :: tile
   @doc "TODO"
-  def get_tile(tile, %HexGrid{} = grid) when is_coordlike(tile) do
-    coords = coords_from(tile)
-    case Map.get(grid.tiles, coords, nil) do
-      tile when is_tile(tile) -> {:real, tile}
-      nil -> {:fake, HexTile.new(coords)}
-    end
+  def sub(a, b) when is_coordlike(a) and is_coordlike(b) do
+    {q1, r1} = coords_from(a)
+    {q2, r2} = coords_from(b)
+    HexTile.new({q1 - q2, r1 - r2})
   end
 
   # Starts at upper left tile and goes clockwise
-  @grid_vectors {{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}}
+  @grid_vectors [{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}]
 
   # Starts at rightmost tile and goes counterclockwise
-  @grid_vectors_alt {{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}}
+  @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
 
-  @spec get_neighbor(coordlike, axial_offset, grid) :: maybetile
+  @spec get_neighbor(coordlike, axial_offset) :: tile
   @doc "TODO"
-  def get_neighbor(tile, offset, %HexGrid{} = grid) when is_coordlike(tile) do
-    {_, tile} = get_tile(tile, grid)
-    add(tile, offset, grid)
+  def get_neighbor(tile, offset) when is_coordlike(tile) and offset in @grid_vectors do
+    add(tile, offset)
   end
 
-  @spec get_neighbors(coordlike, grid) :: [maybetile]
+  @spec get_neighbors(coordlike) :: [tile]
   @doc "TODO"
-  def get_neighbors(tile, grid = %HexGrid{}) when is_coordlike(tile) do
+  def get_neighbors(tile) when is_coordlike(tile) do
     for direction <- @grid_vectors, into: [] do
-      get_neighbor(tile, grid, direction)
+      get_neighbor(tile, direction)
     end
   end
 
-  @grid_diagonal_vectors {{1, -2}, {2, -1}, {1, 1}, {-1, 2}, {-2, 1}, {-1, -1}}
+  @grid_diagonal_vectors [{1, -2}, {2, -1}, {1, 1}, {-1, 2}, {-2, 1}, {-1, -1}]
 
-  @spec get_diagonal_neighbor(tile, grid, diag_offset) :: tile
+  @spec get_diagonal_neighbor(tile, diag_offset) :: tile
   @doc "TODO"
-  def get_diagonal_neighbor(tile = %HexTile{}, grid = %HexGrid{}, offset) do
-    :todo
+  def get_diagonal_neighbor(tile, offset)
+      when is_coordlike(tile) and offset in @grid_diagonal_vectors do
+    add(tile, offset)
   end
 
-  # TODO: rotation?
+  @spec get_diagonal_neighbor(tile, offset_directions) :: tile
+  def get_diagonal_neighbor(tile, direction)
+      when is_coordlike(tile) and direction in @grid_diagonal_vectors do
+    case direction do
+      :top -> {1, -2}
+      :topright -> {2, -1}
+      :bottomright -> {1, 1}
+      :bottom -> {-1, 2}
+      :bottomleft -> {-2, 1}
+      :topleft -> {-1, -1}
+    end
+    |> add(tile)
+  end
+
+  @rotate_directions [:left, :right]
+
+  @spec rotate(tile, tile, atom()) :: tile
+  @doc "TODO"
+  def rotate(tile, around, direction)
+      when is_coordlike(tile)
+      when is_coordlike(around)
+      when is_atom(direction)
+      when direction in @rotate_directions do
+    tile = HexTile.new(tile)
+    around = HexTile.new(around)
+
+    case direction do
+      :left -> {-tile.r, -tile.s, -tile.q}
+      :right -> {-tile.s, -tile.q, -tile.r}
+    end
+    |> HexTile.new()
+  end
+
   # TODO: distances
   # TODO: pathfinding
   # (eastar, https://github.com/wkhere/eastar/blob/master/lib/examples/geo.ex)
