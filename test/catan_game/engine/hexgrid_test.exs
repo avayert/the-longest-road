@@ -1,5 +1,5 @@
 defmodule HexGridTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   # doctest Catan.Engine.Hexes.HexGrid
 
   alias Catan.Engine.Hexes.HexGrid
@@ -12,7 +12,7 @@ defmodule HexGridTest do
   end
 
   test "test coord extraction" do
-    assert Catan.Engine.Hexes
+    # assert Catan.Engine.Hexes
   end
 
   test "init a tile in a grid" do
