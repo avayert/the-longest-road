@@ -11,10 +11,13 @@ defmodule Catan.Engine.Hexes.HexTile do
   @type cubic_coords :: {q :: integer(), r :: integer(), s :: integer()}
 
   @spec new(t()) :: t()
+  @doc "TODO"
   def new(%__MODULE__{} = tile), do: tile
 
   @spec new(axial_coords) :: t()
-  def new({q, r}), do: new({q, r, -q - r})
+  def new({q, r}) when is_integer(q) and is_integer(r) do
+    new({q, r, -q - r})
+  end
 
   @spec new(cubic_coords) :: t()
   def new({q, r, s})
