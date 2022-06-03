@@ -4,7 +4,7 @@ defmodule Catan.Engine.CatanStandard do
   defmodule State do
     use TypedStruct
 
-    alias Catan.Engine.{Player, GameSettings, GameMap}
+    alias Catan.Engine.{Player, GameSettings}
 
     typedstruct do
       field :id, integer(), enforce: true
@@ -23,11 +23,11 @@ defmodule Catan.Engine.CatanStandard do
       field :building_supply, map()
     end
 
-    def apparent_score(state, %Player{} = player) do
+    def apparent_score(_state, %Player{} = _player) do
       0
     end
 
-    def true_score(state, %Player{} = player) do
+    def true_score(_state, %Player{} = _player) do
       1
     end
   end
