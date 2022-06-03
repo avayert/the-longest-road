@@ -8,6 +8,8 @@ defmodule HexTileTest do
     assert HexTile.new(0, 0) == %HexTile{q: 0, r: 0, s: 0}
     assert HexTile.new(-2, 3) == %HexTile{q: -2, r: 3, s: -1}
     assert HexTile.new({1, 2}) == %HexTile{q: 1, r: 2, s: -3}
+    assert HexTile.new(1, 2, -3) == %HexTile{q: 1, r: 2, s: -3}
+    assert HexTile.new(1, -1) |> HexTile.new()
   end
 
   test "create a bad tile" do

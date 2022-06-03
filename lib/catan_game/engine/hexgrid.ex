@@ -27,7 +27,7 @@ defmodule Catan.Engine.Hexes.HexGrid do
   @spec coords_from(coordlike) :: coords
   @doc "TODO"
   def coords_from(%HexTile{q: q, r: r}), do: {q, r}
-  def coords_from({q, r} = item) when is_coords(item), do: item
+  def coords_from({_q, _r} = item) when is_coords(item), do: item
 
   @spec new() :: t()
   @doc "TODO"
@@ -35,16 +35,16 @@ defmodule Catan.Engine.Hexes.HexGrid do
     %__MODULE__{}
   end
 
-  @spec init_tile(coordlike, grid) :: tile
-  defp init_tile(tile, grid) when is_coordlike(tile) and is_grid(grid) do
+  @spec init_tile(coordlike, grid) :: {grid, tile}
+  def init_tile(tile, grid) when is_coordlike(tile) and is_grid(grid) do
     coords = coords_from(tile)
 
-    {old, {newtile, _}} =
+    {_, newtiles} =
       Map.get_and_update(grid.tiles, coords, fn cv ->
         {cv, {HexTile.new(coords), %{}}}
       end)
 
-    newtile
+    {%HexGrid{grid | tiles: newtiles}, Map.get(newtiles, coords)}
   end
 
   @spec put_data(coordlike, map(), grid) :: grid
@@ -86,7 +86,7 @@ defmodule Catan.Engine.Hexes.HexGrid do
   @grid_vectors [{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}]
 
   # Starts at rightmost tile and goes counterclockwise
-  @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
+  # @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
 
   @spec get_neighbor(coordlike, axial_offset) :: tile
   @doc "TODO"
@@ -111,9 +111,20 @@ defmodule Catan.Engine.Hexes.HexGrid do
     add(tile, offset)
   end
 
+  @grid_offset_directions [
+    :top,
+    :topleft,
+    :topright,
+    :bottom,
+    :bottomleft,
+    :bottomright,
+    :left,
+    :right
+  ]
+
   @spec get_diagonal_neighbor(tile, offset_directions) :: tile
   def get_diagonal_neighbor(tile, direction)
-      when is_coordlike(tile) and direction in @grid_diagonal_vectors do
+      when is_coordlike(tile) and direction in @grid_offset_directions do
     case direction do
       :top -> {1, -2}
       :topright -> {2, -1}
@@ -129,11 +140,18 @@ defmodule Catan.Engine.Hexes.HexGrid do
 
   @spec rotate(tile, tile, atom()) :: tile
   @doc "TODO"
-  def rotate(tile, around, direction)
+  def rotate(tile, around, direction) do
+    rotate(tile, around, direction, 1)
+  end
+
+  @spec rotate(tile, tile, atom(), pos_integer()) :: tile
+  @doc "TODO"
+  def rotate(tile, around, direction, turns)
       when is_coordlike(tile)
       when is_coordlike(around)
       when is_atom(direction)
-      when direction in @rotate_directions do
+      when direction in @rotate_directions
+      when turns > 0 do
     tile = HexTile.new(tile)
     around = HexTile.new(around)
 
@@ -142,6 +160,12 @@ defmodule Catan.Engine.Hexes.HexGrid do
       :right -> {-tile.s, -tile.q, -tile.r}
     end
     |> HexTile.new()
+    |> rotate(around, direction, turns - 1)
+  end
+
+  @spec rotate(tile, tile, atom(), 0) :: tile
+  def rotate(tile, _around, _direction, 0) do
+    tile |> HexTile.new()
   end
 
   # TODO: distances
