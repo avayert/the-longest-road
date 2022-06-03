@@ -20,15 +20,6 @@ defmodule Catan.Engine do
     end
   end
 
-  defmodule MapOld do
-    use TypedStruct
-
-    typedstruct do
-      field :tiles, list(Tile.t()), enforce: true
-      field :robber, {integer(), integer()}, default: nil
-    end
-  end
-
   defmodule GameSettings do
     use TypedStruct
 

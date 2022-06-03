@@ -31,6 +31,7 @@ defmodule Catan.Engine.CatanStandard do
     end
   end
 
-  def new(id) do
+  def generate_board() do
+    {:ok, nil}
   end
 end

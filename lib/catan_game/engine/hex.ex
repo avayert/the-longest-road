@@ -1,7 +1,7 @@
 defmodule Catan.Engine.Hexes do
   use Bitwise
 
-  alias Catan.Engine.Hexes.{HexGrid, HexTile}
+  alias Catan.Engine.Hexes.HexTile
 
   @type tile :: HexTile.t()
   @type coords :: {integer(), integer()}
@@ -11,8 +11,6 @@ defmodule Catan.Engine.Hexes do
     col = (hex.q + (hex.r + (hex.r &&& 1))) |> div(2)
     {col, hex.r}
   end
-
-  # TODO: make tuple version
 
   ########################
   # TODO: ????????????????
