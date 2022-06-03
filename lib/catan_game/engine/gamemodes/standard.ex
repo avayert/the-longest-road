@@ -11,7 +11,8 @@ defmodule Catan.Engine.CatanStandard do
 
       field :players, [%Player{}], default: []
       field :game_settings, %GameSettings{}
-      field :map, %GameMap{}
+      # oh no
+      field :map, atom()
 
       field :winner, integer() | none(), default: nil
       # TODO new_deck()
