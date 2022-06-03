@@ -1,4 +1,4 @@
-defmodule Catan.GameSupervisor do
+defmodule Catan.EngineSupervisor do
   use Supervisor
 
   def start_link(init_args) do
@@ -10,7 +10,8 @@ defmodule Catan.GameSupervisor do
     children = [
       {Registry, keys: :unique, name: GameRegistry},
       # `name:` defines the name of the instance
-      {DynamicSupervisor, strategy: :one_for_one, name: GameManager}
+      {DynamicSupervisor, strategy: :one_for_one, name: GamesManager},
+      Catan.PlayerSupervisor
     ]
 
     Supervisor.init(children, strategy: :one_for_all)
