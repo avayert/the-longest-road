@@ -17,7 +17,9 @@ defmodule Catan.Application do
       # Start the Endpoint (http/https)
       CatanWeb.Endpoint,
       # Start a worker by calling: Catan.Worker.start_link(arg)
-      Catan.EngineSupervisor
+      Catan.GameCoordinator,
+      Catan.EngineSupervisor,
+      Catan.PlayerSupervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
