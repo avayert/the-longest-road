@@ -1,4 +1,7 @@
 defmodule Catan.Engine.Hexes.HexGrid do
+  @moduledoc """
+  TODO
+  """
   use Bitwise
   use TypedStruct
 
@@ -10,6 +13,8 @@ defmodule Catan.Engine.Hexes.HexGrid do
   @type coords :: HexTile.axial_coords()
   @type coordlike :: tile | coords
 
+  @type grid_orientation :: :pointy | :flat
+
   @type axial_offset :: {-1..1, -1..1}
   @type diag_offset :: {1, -2} | {2, -1} | {1, 1} | {-1, 2} | {-2, 1} | {-1, -1}
   @type offset_directions ::
@@ -17,6 +22,7 @@ defmodule Catan.Engine.Hexes.HexGrid do
 
   typedstruct do
     field :tiles, %{coords => map()}, default: %{}
+    field :orientation, grid_orientation, default: :pointy
   end
 
   defguard is_grid(item) when is_struct(item, HexGrid)
@@ -33,9 +39,10 @@ defmodule Catan.Engine.Hexes.HexGrid do
 
   @spec new() :: t()
   @doc "Create a new HexGrid"
-  def new() do
-    %__MODULE__{}
-  end
+  def new(), do: %__MODULE__{}
+
+  def new(:pointy), do: %__MODULE__{orientation: :pointy}
+  def new(:flat), do: %__MODULE__{orientation: :flat}
 
   @spec get_data(grid, coordlike) :: map
   @doc "Get data on a tile from a grid"
@@ -138,18 +145,34 @@ defmodule Catan.Engine.Hexes.HexGrid do
     :left,
     :right
   ]
+  @grid_orientations [:flat, :pointy]
 
-  @spec get_diagonal_neighbor(tile, offset_directions) :: tile
-  def get_diagonal_neighbor(tile, direction)
-      when is_coordlike(tile) and direction in @grid_offset_directions do
+  @spec get_diagonal_neighbor(tile, offset_directions, grid_orientation) :: tile
+  def get_diagonal_neighbor(tile, direction, orientation \\ :pointy)
+      when is_coordlike(tile)
+      when direction in @grid_offset_directions
+      when orientation in @grid_orientations do
     #
-    case direction do
-      :top -> {1, -2}
-      :topright -> {2, -1}
-      :bottomright -> {1, 1}
-      :bottom -> {-1, 2}
-      :bottomleft -> {-2, 1}
-      :topleft -> {-1, -1}
+    case orientation do
+      :flat ->
+        case direction do
+          :top -> {1, -2}
+          :topright -> {2, -1}
+          :bottomright -> {1, 1}
+          :bottom -> {-1, 2}
+          :bottomleft -> {-2, 1}
+          :topleft -> {-1, -1}
+        end
+
+      :pointy ->
+        case direction do
+          :topright -> {1, -2}
+          :right -> {2, -2}
+          :bottomright -> {1, 1}
+          :bottomleft -> {-1, 2}
+          :left -> {-2, 1}
+          :topleft -> {-1, -1}
+        end
     end
     |> add(tile)
   end
@@ -173,6 +196,9 @@ defmodule Catan.Engine.Hexes.HexGrid do
     tile = HexTile.new(tile)
     around = HexTile.new(around)
 
+    # TODO
+    # This is kinda dumb and bad i could just
+    # do math a few times instead of recursing
     case direction do
       :left -> {-tile.r, -tile.s, -tile.q}
       :right -> {-tile.s, -tile.q, -tile.r}
