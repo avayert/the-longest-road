@@ -9,8 +9,10 @@ defmodule Catan.EngineSupervisor do
   def init(_init_args) do
     children = [
       {Registry, keys: :unique, name: GameRegistry},
-      # `name:` defines the name of the instance
-      {DynamicSupervisor, strategy: :one_for_one, name: GamesManager}
+      {DynamicSupervisor, strategy: :one_for_one, name: GamesManager},
+
+      {Registry, keys: :unique, name: PlayerRegistry},
+      {DynamicSupervisor, strategy: :one_for_one, name: PlayerManager},
     ]
 
     Supervisor.init(children, strategy: :one_for_all)

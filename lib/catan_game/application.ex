@@ -19,7 +19,6 @@ defmodule Catan.Application do
       # Start a worker by calling: Catan.Worker.start_link(arg)
       Catan.GameCoordinator,
       Catan.EngineSupervisor,
-      Catan.PlayerSupervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
