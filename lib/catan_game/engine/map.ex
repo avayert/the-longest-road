@@ -1,5 +1,8 @@
 defmodule Catan.Engine.GameMap do
-  alias Catan.Engine.Hexes
+  @moduledoc """
+  TODO
+  """
+
   use GenServer
 
   defmodule State do

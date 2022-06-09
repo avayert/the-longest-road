@@ -1,4 +1,8 @@
 defmodule Catan.Game do
+  @moduledoc """
+  TODO
+  """
+
   use GenServer
 
   defmodule State do

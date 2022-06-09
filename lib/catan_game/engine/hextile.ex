@@ -1,4 +1,7 @@
 defmodule Catan.Engine.Hexes.HexTile do
+  @moduledoc """
+  Represents a hexagon tile.  Basically a glorified coordinate.
+  """
   use TypedStruct
 
   typedstruct do

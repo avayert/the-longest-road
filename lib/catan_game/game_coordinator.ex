@@ -1,12 +1,12 @@
 defmodule Catan.GameCoordinator do
-  use GenServer, restart: :transient
-
   @moduledoc """
   Behold the enslaved pencil pusher turned genserver that manages setting up games
   and starting them.  This process encapsulates creating a new lobby (Game), putting
   players in that lobby, and handling their completion.  It also does stuff like
   reconnecting users, blah blah i'll finish this spiel later.
   """
+
+  use GenServer, restart: :transient
 
   @type via_tuple() :: {:via, atom(), {atom(), String.t()}}
 
@@ -31,14 +31,15 @@ defmodule Catan.GameCoordinator do
     {:via, Registry, {GameRegistry, id}}
   end
 
-  @ignored_chars ~W(i I l O)
+  @ignored_id_chars ~W(i I l O)
 
   @spec random_id(num :: pos_integer()) :: String.t()
   @doc "Generate a random [a-zA-Z] string (default length of 5)"
   def random_id(num \\ 5) when is_number(num) and num > 0 do
     Stream.concat(?a..?z, ?A..?z)
-    |> Stream.reject(fn ch -> ch in @ignored_chars end)
-    |> Enum.shuffle() # do not judge me you have no such authority
+    |> Stream.reject(fn ch -> ch in @ignored_id_chars end)
+    # do not judge me you have no such authority
+    |> Enum.shuffle()
     |> Enum.take_random(num)
     |> List.to_string()
 
