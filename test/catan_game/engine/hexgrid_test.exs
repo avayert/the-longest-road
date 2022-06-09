@@ -1,8 +1,8 @@
 defmodule HexGridTest do
   use ExUnit.Case, async: true
-  # doctest Catan.Engine.Hexes.HexGrid
+  # doctest Catan.Engine.HexGrid
 
-  alias Catan.Engine.Hexes.{HexGrid, HexTile}
+  alias Catan.Engine.{HexGrid, HexTile}
 
   test "create a grid" do
     assert HexGrid.new() == %HexGrid{}

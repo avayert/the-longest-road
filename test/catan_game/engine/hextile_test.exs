@@ -1,8 +1,8 @@
 defmodule HexTileTest do
   use ExUnit.Case, async: true
-  # doctest Catan.Engine.Hexes.HexTile
+  # doctest Catan.Engine.HexTile
 
-  alias Catan.Engine.Hexes.HexTile
+  alias Catan.Engine.HexTile
 
   test "create a tile" do
     assert HexTile.new(0, 0) == %HexTile{q: 0, r: 0, s: 0}
