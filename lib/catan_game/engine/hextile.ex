@@ -101,6 +101,18 @@ defmodule Catan.Engine.HexTile do
     new({q * k, r * k})
   end
 
+  @spec downscale(coordlike, pos_integer()) ::
+          {:ok, tile} | {:error, {float | integer, float | integer}}
+  @doc "TODO"
+  def downscale(a, k) when is_coordlike(a) and is_integer(k) and k > 0 do
+    {q, r} = coords_from(a)
+
+    case {rem(q, k), rem(r, k)} do
+        {0, 0} -> {:ok, new(div(q, k), div(r, k))}
+        coords -> {:error, coords}
+    end
+  end
+
   @spec length(coordlike) :: integer
   @doc "TODO"
   def length(a) when is_coordlike(a) do
@@ -121,6 +133,8 @@ defmodule Catan.Engine.HexTile do
 
   # Starts at rightmost tile and goes counterclockwise
   # @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
+
+  # TODO: angle/degree/whatever_to_offset function
 
   @spec get_neighbor(coordlike, axial_offset) :: tile
   @doc "TODO"
@@ -185,6 +199,28 @@ defmodule Catan.Engine.HexTile do
         end
     end
     |> add(tile)
+  end
+
+  @typep gcn_opts :: [no_args: true]
+  @spec get_common_neighbors([coordlike]) :: [tile]
+  @spec get_common_neighbors([coordlike], gcn_opts) :: [tile]
+  @doc "TODO (this function literally took me 80 minutes to write)"
+  def get_common_neighbors(tiles, opts \\ []) when is_list(tiles) and is_list(opts) do
+    strip_args =
+      if Keyword.get(opts, :no_args, false) do
+        fn t -> new(t) in Enum.map(tiles, &new(&1)) end
+      else
+        fn _ -> false end
+      end
+
+    for tile <- tiles, reduce: [] do
+      acc -> Enum.into(acc, [new(tile)] ++ get_neighbors(tile))
+    end
+    |> Enum.frequencies()
+    |> Stream.map(fn {k, n} -> if n == Kernel.length(tiles), do: k end)
+    |> Stream.reject(&is_nil/1)
+    |> Stream.reject(strip_args)
+    |> Enum.to_list()
   end
 
   @rotate_directions [:left, :right]

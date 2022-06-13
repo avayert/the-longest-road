@@ -40,6 +40,8 @@ defmodule Catan.Engine.HexGrid do
   def new(:pointy), do: %__MODULE__{orientation: :pointy}
   def new(:flat), do: %__MODULE__{orientation: :flat}
 
+  ## Data functions
+
   @spec get_data(grid, coordlike) :: map
   @doc "Get data on a tile from a grid"
   def get_data(grid, coords) when is_grid(grid) and is_coordlike(coords) do
@@ -79,8 +81,4 @@ defmodule Catan.Engine.HexGrid do
 
     %HexGrid{grid | tiles: new_tiles}
   end
-
-  # put_tile(grid, {q, r})
-  # put_tile(grid, tile)
-  # get_tile(grid, {q, r})
 end
