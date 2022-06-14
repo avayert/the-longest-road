@@ -8,14 +8,24 @@ defmodule Catan.EngineSupervisor do
   @impl true
   def init(_init_args) do
     children = [
+      # Registry for the game instance supervisors
       {Registry, keys: :unique, name: GameRegistry},
-      {DynamicSupervisor, strategy: :one_for_one, name: GamesManager},
+
+      # game supervisor that holds the game instance supervisors
+      {DynamicSupervisor, strategy: :one_for_one, name: GameManager},
+
+      # Registry and supervisor for player instances
       {Registry, keys: :unique, name: PlayerRegistry},
       {DynamicSupervisor, strategy: :one_for_one, name: PlayerManager},
+
+      # Registry for map instances
       {Registry, keys: :unique, name: MapRegistry},
-      {DynamicSupervisor, strategy: :one_for_one, name: MapManager}
+
+      # Registry and supervisor for lobby instances
+      {Registry, keys: :unique, name: LobbyRegistry},
+      {DynamicSupervisor, strategy: :one_for_one, name: LobbyManager}
     ]
 
-    Supervisor.init(children, strategy: :one_for_all)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 end
