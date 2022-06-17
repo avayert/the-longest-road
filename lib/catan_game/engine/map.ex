@@ -3,16 +3,25 @@ defmodule Catan.Engine.GameMap do
   TODO
   """
 
-  use GenServer
+  use GenServer, restart: :transient
+
+  require Integer
 
   alias Catan.Engine.{HexGrid, HexTile}
 
   import HexTile,
     only: [
       is_coordlike: 1,
+      is_coordlike: 3,
       # is_coords: 1,
       is_tile: 1,
       coords_from: 1
+    ]
+
+  import Integer,
+    only: [
+      is_even: 1,
+      is_odd: 1
     ]
 
   @type tile :: HexTile.t()
@@ -21,7 +30,8 @@ defmodule Catan.Engine.GameMap do
   @type coordlike :: HexTile.coordlike()
   @type vector :: HexTile.axial_offset()
 
-  @type via_tuple() :: {:via, atom(), {atom(), String.t()}}
+  @type map_id :: String.t()
+  @type via_tuple() :: {:via, module(), {module(), String.t()}}
 
   defmodule State do
     use TypedStruct
@@ -33,12 +43,7 @@ defmodule Catan.Engine.GameMap do
     end
   end
 
-  @spec via(String.t()) :: via_tuple()
-  defp via(id) do
-    {:via, Registry, {MapManager, id}}
-  end
-
-  # genserver callbacks
+  ## GenServer callbacks
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, %State{}, opts)
@@ -63,8 +68,8 @@ defmodule Catan.Engine.GameMap do
   @impl true
   def handle_call({:get_edge, tile, vector}, _from, state) do
     tile =
-      HexTile.new(tile)
-      |> HexTile.scale(2)
+      tile
+      |> to_bigmap_tile()
       |> HexTile.add(vector)
 
     data = HexGrid.get_data(state.edgemap, tile)
@@ -72,9 +77,78 @@ defmodule Catan.Engine.GameMap do
     {:reply, {tile, data}, state}
   end
 
-  # private functions
+  @impl true
+  def handle_call({:get_corner, tile, vector}, _from, state) do
+    tile =
+      tile
+      |> to_bigmap_tile()
+      |> HexTile.add(vector)
 
-  # public api
+    data = HexGrid.get_data(state.cornermap, tile)
+
+    {:reply, {tile, data}, state}
+  end
+
+  @impl true
+  def handle_call({:get_corner, t1, t2, t3}, _from, state) do
+    # TODO: check if they're all properly adjacent
+    tile1 = to_bigmap_tile(t1)
+    tile2 = to_bigmap_tile(t2)
+    tile3 = to_bigmap_tile(t3)
+
+    tile =
+      case HexTile.get_common_neighbors([tile1, tile2, tile3]) do
+        [tile | _] -> tile
+        [] -> nil
+      end
+
+    data =
+      if tile do
+        HexGrid.get_data(state.cornermap, tile)
+      end
+
+    {:reply, {tile, data}, state}
+  end
+
+  ## Private functions
+
+  @spec via(String.t()) :: via_tuple()
+  defp via(id) do
+    {:via, Registry, {MapManager, id}}
+  end
+
+  defp to_bigmap_tile(tile) when is_coordlike(tile) do
+    tile |> HexTile.new() |> HexTile.scale(2)
+  end
+
+  # "Translate bigmap coordinates to an object in the real map"
+  defp to_tilemap_object(tile, :edgemap) when is_coordlike(tile) do
+    {q, r} = coords_from(tile)
+    {qn, rn} = {rem(q, 2), rem(r, 2)}
+
+    # tiles: q and r are even
+    # edges: q and r cannot both be even
+    case {qn, rn} do
+      {0, 0} -> {:tile, HexTile.new(qn, rn)}
+      _ -> {:edge, nil}
+    end
+  end
+
+  defp to_tilemap_object!(tile, :cornermap) when is_coordlike(tile) do
+    {q, r} = coords_from(tile)
+    # this is going to be scuffed as hell
+    # basically everything is aligned diagonally
+    # if we just subtract vectors favorably, we'll reach the inner ring
+    # if we land on a tile diagional to 0 (a vector tile), we're good
+    # if we land on a neighbor to one, we're not
+    nil
+  end
+
+  defp parity?(n1, n2) when is_integer(n1) and is_integer(n2) do
+    is_even(n1 + n2)
+  end
+
+  ## Public api
 
   @spec get_tile(String.t(), coords) :: {tile, state :: map()}
   @doc "TODO"
@@ -96,29 +170,24 @@ defmodule Catan.Engine.GameMap do
 
   @grid_vectors [{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}]
 
-  @spec get_edge(tile :: coordlike, vector :: vector) :: {tile, map()}
+  @spec get_edge(map_id, tile :: coordlike, vector :: vector) :: {tile, map()}
   @doc "TODO"
-  def get_edge(tile, vector) when is_coordlike(tile) and vector in @grid_vectors do
-    # Translate tile vector into bigmap coordinates
-    # it should just be as easy as tile*2 + vector
-    # I HOPE
-
-    ############
-    #
-    # GODDAMN IT I NEED A REGISTRY AND VIA LOOKUPS
-    #
-    ############
-
-    GenServer.call(__MODULE__, {:get_edge, tile, vector})
+  def get_edge(id, tile, vector) when is_coordlike(tile) and vector in @grid_vectors do
+    GenServer.call(via(id), {:get_edge, tile, vector})
   end
 
-  @spec get_corner(tile :: coordlike(), vector :: vector) :: any()
+  @spec get_corner(map_id, tile :: coordlike(), vector :: vector) :: {tile, map()}
   @doc "TODO"
-  def get_corner(tile, vector) when is_coordlike(tile) and vector in @grid_vectors do
-    # same deal as above just with the flat top orientation
+  def get_corner(id, tile, vector) when is_coordlike(tile) and vector in @grid_vectors do
+    GenServer.call(via(id), {:get_corner, tile, vector})
   end
 
-  def shutdown do
-    GenServer.cast(__MODULE__, {:terminate})
+  @spec get_corner(map_id, tile, tile, tile) :: {tile, map()}
+  def get_corner(id, tile1, tile2, tile3) when is_coordlike(tile1, tile2, tile3) do
+    GenServer.call(via(id), {:get_corner, tile1, tile2, tile3})
+  end
+
+  def shutdown(id) do
+    GenServer.cast(via(id), {:terminate})
   end
 end
