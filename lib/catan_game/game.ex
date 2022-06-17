@@ -3,7 +3,7 @@ defmodule Catan.Game do
   TODO
   """
 
-  use GenServer
+  use GenServer, restart: :transient
 
   defmodule State do
     use TypedStruct

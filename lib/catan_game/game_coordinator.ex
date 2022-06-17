@@ -8,8 +8,6 @@ defmodule Catan.GameCoordinator do
 
   use GenServer, restart: :transient
 
-  @type via_tuple() :: {:via, atom(), {atom(), String.t()}}
-
   defmodule State do
     use TypedStruct
 
@@ -17,16 +15,18 @@ defmodule Catan.GameCoordinator do
     end
   end
 
+  @type via_tuple() :: {:via, module(), {module(), String.t()}}
+
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %State{}, name: __MODULE__)
   end
 
   @impl true
-  def init(args) do
-    {:ok, args}
+  def init(state) do
+    {:ok, state}
   end
 
-  @spec via(String.t()) :: {:via, Registry, {GameRegistry, String.t()}}
+  @spec via(id :: String.t()) :: {:via, Registry, {GameRegistry, String.t()}}
   defp via(id) do
     {:via, Registry, {GameRegistry, id}}
   end

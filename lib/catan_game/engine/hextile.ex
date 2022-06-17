@@ -108,8 +108,8 @@ defmodule Catan.Engine.HexTile do
     {q, r} = coords_from(a)
 
     case {rem(q, k), rem(r, k)} do
-        {0, 0} -> {:ok, new(div(q, k), div(r, k))}
-        coords -> {:error, coords}
+      {0, 0} -> {:ok, new(div(q, k), div(r, k))}
+      coords -> {:error, coords}
     end
   end
 
