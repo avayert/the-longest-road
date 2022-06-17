@@ -36,7 +36,7 @@ defmodule Catan.GameCoordinator do
   @spec random_id(num :: pos_integer()) :: String.t()
   @doc "Generate a random [a-zA-Z] string (default length of 5)"
   def random_id(num \\ 5) when is_number(num) and num > 0 do
-    Stream.concat(?a..?z, ?A..?z)
+    Stream.concat(?a..?z, ?A..?Z)
     |> Stream.reject(fn ch -> ch in @ignored_id_chars end)
     # do not judge me you have no such authority
     |> Enum.shuffle()
