@@ -18,8 +18,8 @@ defmodule CatanWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
-    # get "/catan", CatanMainController, :idk
-    # is this even close to being right?
+    live "/catan", MainLive, :index
+
     # we need /catan, //lobby, //watch, //game/:id
     # if we're not doing the subdomain that is
   end
