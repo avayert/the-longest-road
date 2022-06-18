@@ -26,39 +26,110 @@ defmodule Catan.GameCoordinator do
     {:ok, state}
   end
 
-  @spec via(id :: String.t()) :: {:via, Registry, {GameRegistry, String.t()}}
-  defp via(id) do
-    {:via, Registry, {GameRegistry, id}}
+  ## Private functions
+
+  @typep via_registries :: :game | :lobby
+  @spec via(id :: String.t(), type :: via_registries) :: via_tuple
+  defp via(id, type) do
+    case type do
+      :game -> {:via, Registry, {GameRegistry, id}}
+      :lobby -> {:via, Registry, {LobbyRegistry, id}}
+      :map -> {:via, Registry, {MapRegistry, id}}
+      :player -> {:via, Registry, {PlayerRegistry, id}}
+    end
   end
 
-  @ignored_id_chars ~W(i I l O)
+  defp unique_id?(id, type) do
+    {_, _, {where, _}} = via(id, type)
 
-  @spec random_id(num :: pos_integer()) :: String.t()
-  @doc "Generate a random [a-zA-Z] string (default length of 5)"
-  def random_id(num \\ 5) when is_number(num) and num > 0 do
-    Stream.concat(?a..?z, ?A..?Z)
-    |> Stream.reject(fn ch -> ch in @ignored_id_chars end)
-    # do not judge me you have no such authority
-    |> Enum.shuffle()
-    |> Enum.take_random(num)
-    |> List.to_string()
-
-    # Stream.concat(?a..?z)
-    # |> Stream.reject(fn ch -> ch in ~w(l) end)
-    # |> Enum.shuffle()
-    # |> Enum.take(num)
-    # |> List.to_string()
+    Registry.lookup(where, id)
+    |> Enum.empty?()
   end
 
-  # testing stuff
+  defp new_id(type) do
+    id = Catan.Utils.random_id()
 
-  def handle_call({:test}) do
+    if unique_id?(id, type) do
+      id
+    else
+      new_id(type)
+    end
   end
 
-  # genserver/pubsub impls
+  ## Testing stuff
 
-  # public api
+  ## PubSub callbacks
 
+  ## GenServer callbacks
+  # Lobbies
+
+  @impl true
+  def handle_call({:create_lobby}, _from, state) do
+    id = new_id(:lobby)
+    opts = [name: via(id, :lobby), id: id]
+
+    result =
+      DynamicSupervisor.start_child(
+        LobbyManager,
+        {Catan.Lobby, opts}
+      )
+      |> case do
+        {:error, _} = result ->
+          result |> IO.inspect(label: "bad thing happened")
+
+        {:ok, _pid} ->
+          IO.inspect("created lobby: #{id}")
+          {:ok, id}
+      end
+
+    {:reply, result, state}
+  end
+
+  @impl true
+  def handle_call({:delete_lobby, id}, _from, state) do
+    result = GenServer.stop(via(id, :lobby))
+    {:reply, result, state}
+  end
+
+  @impl true
+  def handle_call({:get_lobbies}, _from, state) do
+    ids = Registry.select(LobbyRegistry, [{{:"$1", :_, :_}, [], [:"$1"]}])
+    {:reply, ids, state}
+  end
+
+  @impl true
+  def handle_call({:does_lobby_exist, id}, _from, state) do
+    Registry.lookup(LobbyRegistry, id)
+    |> case do
+      [{_, _}] -> {:reply, true, state}
+      [] -> {:reply, false, state}
+    end
+  end
+
+  ## Public API
+  # Lobbies
+
+  @spec create_lobby() :: {:ok, String.t()} | {:error, any()}
+  def create_lobby() do
+    GenServer.call(__MODULE__, {:create_lobby})
+  end
+
+  @spec delete_lobby(id :: String.t()) :: :ok
+  def delete_lobby(id) do
+    GenServer.call(__MODULE__, {:delete_lobby, id})
+  end
+
+  @spec get_lobbies() :: [String.t()]
+  def get_lobbies() do
+    GenServer.call(__MODULE__, {:get_lobbies})
+  end
+
+  @spec lobby_exists?(String.t()) :: boolean()
+  def lobby_exists?(id) do
+    GenServer.call(__MODULE__, {:does_lobby_exist, id})
+  end
+
+  # testing functions
 end
 
 ########################

@@ -18,7 +18,6 @@ defmodule Catan.Lobby do
     end
   end
 
-
   @spec via(String.t()) :: via_tuple()
   def via(id) do
     {:via, Registry, {LobbyManager, id}}
