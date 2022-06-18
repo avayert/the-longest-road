@@ -9,8 +9,8 @@ defmodule Catan.Engine.CatanStandard do
     typedstruct do
       field :id, integer(), enforce: true
 
-      field :players, [%Player{}], default: []
-      field :game_settings, %GameSettings{}
+      field :players, [Player.t()], default: []
+      field :game_settings, GameSettings.t()
       # oh no
       field :map, atom()
 
