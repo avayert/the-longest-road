@@ -17,8 +17,9 @@ defmodule CatanWeb.Router do
   scope "/", CatanWeb do
     pipe_through :browser
 
-    get "/", PageController, :index
-    live "/catan", MainLive, :index
+    # get "/", PageController, :index
+    live "/", MainLive, :index
+    get "/:id", RedirectController, :route_id
 
     # we need /catan, //lobby, //watch, //game/:id
     # if we're not doing the subdomain that is
