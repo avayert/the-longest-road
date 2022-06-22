@@ -9,24 +9,18 @@ defmodule Catan.Game do
     use TypedStruct
 
     typedstruct do
-      field :players, [%Catan.Engine.Player{}], default: []
+      field :players, [Catan.Engine.Player.t()], default: []
       # global lobby settings
       # selected game
       # game specific lobby settings
     end
   end
 
-  @doc """
-  Start our queue and link it.
-  This is a helper function
-  """
   def start_link(state \\ %{}) do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
-  @doc """
-  GenServer.init/1 callback
-  """
+  @impl true
   def init(state), do: {:ok, state}
 end
 
