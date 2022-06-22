@@ -12,6 +12,7 @@ defmodule Catan.GameCoordinator do
     use TypedStruct
 
     typedstruct do
+      field :lobbies, %{String.t() => Catan.Lobby.t()}, default: %{}
     end
   end
 
@@ -28,12 +29,12 @@ defmodule Catan.GameCoordinator do
 
   ## Private functions
 
-  @typep via_registries :: :game | :lobby
+  @typep via_registries :: :game | :map | :player
+
   @spec via(id :: String.t(), type :: via_registries) :: via_tuple
   defp via(id, type) do
     case type do
       :game -> {:via, Registry, {GameRegistry, id}}
-      :lobby -> {:via, Registry, {LobbyRegistry, id}}
       :map -> {:via, Registry, {MapRegistry, id}}
       :player -> {:via, Registry, {PlayerRegistry, id}}
     end
@@ -65,45 +66,37 @@ defmodule Catan.GameCoordinator do
 
   @impl true
   def handle_call({:create_lobby}, _from, state) do
-    id = new_id(:lobby)
-    opts = [name: via(id, :lobby), id: id]
+    id = new_id(:game)
+    lobby = Catan.Lobby.new(id)
+    state = update_in(state, [:lobbies, id], fn _ -> lobby end)
 
-    result =
-      DynamicSupervisor.start_child(
-        LobbyManager,
-        {Catan.Lobby, opts}
-      )
-      |> case do
-        {:error, _} = result ->
-          result |> IO.inspect(label: "bad thing happened")
-
-        {:ok, _pid} ->
-          IO.inspect("created lobby: #{id}")
-          {:ok, id}
-      end
-
-    {:reply, result, state}
+    {:reply, :ok, state}
   end
 
   @impl true
   def handle_call({:delete_lobby, id}, _from, state) do
-    result = GenServer.stop(via(id, :lobby))
-    {:reply, result, state}
+    {_, state} = pop_in(state, [:lobbies, id])
+    {:reply, :ok, state}
   end
 
   @impl true
   def handle_call({:get_lobbies}, _from, state) do
-    ids = Registry.select(LobbyRegistry, [{{:"$1", :_, :_}, [], [:"$1"]}])
-    {:reply, ids, state}
+    {:reply, Map.values(state.lobbies), state}
   end
 
   @impl true
   def handle_call({:does_lobby_exist, id}, _from, state) do
-    Registry.lookup(LobbyRegistry, id)
+    Map.fetch(state.lobbies, id)
     |> case do
-      [{_, _}] -> {:reply, true, state}
-      [] -> {:reply, false, state}
+      {:ok, %{}} -> {:reply, true, state}
+      :error -> {:reply, false, state}
     end
+  end
+
+  @impl true
+  def handle_call({:start_game}, _from, state) do
+    # start
+    {:reply, :ok, state}
   end
 
   ## Public API
@@ -124,9 +117,16 @@ defmodule Catan.GameCoordinator do
     GenServer.call(__MODULE__, {:get_lobbies})
   end
 
-  @spec lobby_exists?(String.t()) :: boolean()
+  @spec lobby_exists?(id :: String.t()) :: boolean()
   def lobby_exists?(id) do
     GenServer.call(__MODULE__, {:does_lobby_exist, id})
+  end
+
+  # Games
+
+  @spec start_game(id :: String.t()) :: :ok | {:error, atom()}
+  def start_game(id) do
+    GenServer.call(__MODULE__, {:start_game, id})
   end
 
   # testing functions
@@ -145,3 +145,20 @@ end
 # defp via_tuple(id) do
 #   {:via, Registry, {GameRegistry, id}}
 # end
+#
+#
+# opts = [name: via(id, :lobby), id: id]
+#
+# result =
+#   DynamicSupervisor.start_child(
+#     LobbyManager,
+#     {Catan.Lobby, opts}
+#   )
+#   |> case do
+#     {:error, _} = result ->
+#       result |> IO.inspect(label: "bad thing happened")
+#
+#     {:ok, _pid} ->
+#       IO.inspect("created lobby: #{id}")
+#       {:ok, id}
+#   end

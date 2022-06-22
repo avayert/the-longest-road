@@ -19,11 +19,11 @@ defmodule Catan.EngineSupervisor do
       {DynamicSupervisor, strategy: :one_for_one, name: PlayerManager},
 
       # Registry for map instances
-      {Registry, keys: :unique, name: MapRegistry},
+      {Registry, keys: :unique, name: MapRegistry}
 
-      # Registry and supervisor for lobby instances
-      {Registry, keys: :unique, name: LobbyRegistry},
-      {DynamicSupervisor, strategy: :one_for_one, name: LobbyManager}
+      # # Registry and supervisor for lobby instances
+      # {Registry, keys: :unique, name: LobbyRegistry},
+      # {DynamicSupervisor, strategy: :one_for_one, name: LobbyManager}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
