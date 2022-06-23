@@ -26,4 +26,21 @@ defmodule Catan.Utils do
     # TODO: check registry where needed to make sure id doesnt exist
     #       likely unnecessary but you know, that 1-in-1M chance
   end
+
+  @spec weighted_random(keyword(pos_integer)) :: atom()
+  def weighted_random(items) do
+    # https://elixirforum.com/t/weight-based-random-sampling/23345/4
+
+    accumulated_weights =
+      items
+      |> Enum.sort(&(elem(&1, 1) < elem(&2, 1)))
+      |> Enum.scan(fn {k, w}, {_, w_sum} -> {k, w + w_sum} end)
+
+    {_, max} = List.last(accumulated_weights)
+    random_value = Enum.random(1..max)
+
+    Enum.reduce_while(accumulated_weights, random_value, fn {k, w}, r ->
+      if r <= w, do: {:halt, k}, else: {:cont, r}
+    end)
+  end
 end
