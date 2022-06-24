@@ -11,6 +11,8 @@ defmodule Catan.Engine.HexTile do
     field :s, integer()
   end
 
+  use Accessible
+
   @type tile :: t()
 
   @type axial_coords :: {q :: integer(), r :: integer()}

@@ -41,6 +41,8 @@ defmodule Catan.Engine.GameMap do
       field :edgemap, HexGrid.grid(), default: HexGrid.new(:pointy)
       field :cornermap, HexGrid.grid(), default: HexGrid.new(:flat)
     end
+
+    use Accessible
   end
 
   ## GenServer callbacks

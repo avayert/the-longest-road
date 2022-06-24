@@ -27,6 +27,8 @@ defmodule Catan.Engine.HexGrid do
     field :orientation, grid_orientation, default: :pointy
   end
 
+  use Accessible
+
   defguard is_grid(item) when is_struct(item, HexGrid)
 
   ## Initializers

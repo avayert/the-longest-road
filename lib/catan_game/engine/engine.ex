@@ -10,11 +10,4 @@ defmodule Catan.Engine do
       field :hand, list()
     end
   end
-
-  defmodule GameStats do
-    use TypedStruct
-
-    typedstruct do
-    end
-  end
 end

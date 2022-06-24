@@ -6,14 +6,20 @@ defmodule Catan.GameCoordinator do
   reconnecting users, blah blah i'll finish this spiel later.
   """
 
-  use GenServer, restart: :transient
+  use GenServer
+
+  require Logger
+
+  alias Catan.Lobby
 
   defmodule State do
     use TypedStruct
 
     typedstruct do
-      field :lobbies, %{String.t() => Catan.Lobby.t()}, default: %{}
+      field :lobbies, %{String.t() => Lobby.t()}, default: %{}
     end
+
+    use Accessible
   end
 
   @type via_tuple() :: {:via, module(), {module(), String.t()}}
@@ -67,16 +73,27 @@ defmodule Catan.GameCoordinator do
   @impl true
   def handle_call({:create_lobby}, _from, state) do
     id = new_id(:game)
-    lobby = Catan.Lobby.new(id)
-    state = update_in(state, [:lobbies, id], fn _ -> lobby end)
+    lobby = Lobby.new(id)
 
-    {:reply, :ok, state}
+    lobby_list =
+      state.lobbies
+      |> Map.put(id, lobby)
+
+    state = %State{state | lobbies: lobby_list}
+    # state = update_in(state[:lobbies][id], fn _ -> lobby end)
+
+    {:reply, {id, lobby}, state}
   end
 
   @impl true
   def handle_call({:delete_lobby, id}, _from, state) do
     {_, state} = pop_in(state, [:lobbies, id])
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:get_lobby, id}, _from, state) do
+    {:reply, Map.get(state.lobbies, id), state}
   end
 
   @impl true
@@ -94,15 +111,32 @@ defmodule Catan.GameCoordinator do
   end
 
   @impl true
-  def handle_call({:start_game}, _from, state) do
-    # start
-    {:reply, :ok, state}
+  def handle_call({:start_game, id}, _from, state) do
+    lobby = Map.get(state.lobbies, id)
+    opts = [name: via(id, :game), lobby: lobby]
+
+    result =
+      DynamicSupervisor.start_child(
+        GameManager,
+        {Catan.Game, opts}
+      )
+      |> case do
+        {:error, _} = result ->
+          Logger.info("bad thing happened: #{inspect(result)}")
+          result
+
+        {:ok, _pid} ->
+          Logger.info("Started game: #{id}")
+          {:ok, id}
+      end
+
+    {:reply, result, state}
   end
 
   ## Public API
   # Lobbies
 
-  @spec create_lobby() :: {:ok, String.t()} | {:error, any()}
+  @spec create_lobby() :: {String.t(), Lobby.t()}
   def create_lobby() do
     GenServer.call(__MODULE__, {:create_lobby})
   end
@@ -110,6 +144,11 @@ defmodule Catan.GameCoordinator do
   @spec delete_lobby(id :: String.t()) :: :ok
   def delete_lobby(id) do
     GenServer.call(__MODULE__, {:delete_lobby, id})
+  end
+
+  @spec get_lobby(id :: String.t()) :: Lobby.t() | nil
+  def get_lobby(id) do
+    GenServer.call(__MODULE__, {:get_lobby, id})
   end
 
   @spec get_lobbies() :: [String.t()]

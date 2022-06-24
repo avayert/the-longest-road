@@ -50,7 +50,8 @@ defmodule Catan.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
       {:typed_struct, "~> 0.3"},
-      {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
+      {:accessible, "~> 0.3.0"}
     ]
   end
 
