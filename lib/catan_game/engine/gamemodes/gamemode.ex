@@ -1,17 +1,9 @@
 defmodule Catan.Engine.GameMode do
   @moduledoc false
 
-  defmodule GameState do
-    use TypedStruct
+  alias Catan.Engine.GameMode.Helpers
 
-    typedstruct do
-      field :opts, keyword()
-    end
-  end
-
-  # @typep gamestate :: GameState.t()
-
-  @callback init(opts :: keyword) :: :ok | {:error, any}
+  @callback init(initial_state :: any, opts :: keyword) :: Helpers.directive()
 
   # @callback setup_game_state(state :: gamestate) :: gamestate
 
@@ -23,18 +15,21 @@ defmodule Catan.Engine.GameMode do
   # @callback choose_turn_order() :: any
 
   @optional_callbacks [
-    init: 1
+    # init: 2
   ]
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
-      @behaviour Catan.Engine.GameMode
+      alias Catan.Engine.GameMode
+      @behaviour GameMode
 
-      import Catan.Engine.GameMode.Helpers
+      import GameMode.Helpers
 
-      def init(opts) do
-        :ok
-      end
+      @type directive :: GameMode.Helpers.directive()
+
+      # def init(initial_state, opts) do
+      #   initial_state
+      # end
     end
   end
 end
