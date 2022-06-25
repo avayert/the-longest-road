@@ -9,8 +9,8 @@ defmodule HexGridTest do
   end
 
   test "test coord extraction" do
-    assert HexTile.new(2, 3) |> HexGrid.coords_from() == {2, 3}
-    assert {-1, -2} |> HexGrid.coords_from() == {-1, -2}
+    assert HexTile.new(2, 3) |> HexTile.coords_from() == {2, 3}
+    assert {-1, -2} |> HexTile.coords_from() == {-1, -2}
   end
 
   test "put and get data in a grid tile" do
