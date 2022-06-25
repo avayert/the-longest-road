@@ -1,29 +1,39 @@
 defmodule Catan.Engine.GameMode.Helpers do
   @moduledoc false
 
-  @type game_action :: {:action, atom(), keyword()}
-  @type game_state :: {:state, atom(), keyword()}
-  @type directive :: game_action | game_state
+  @type game_action :: {:action, atom()}
+  @type game_phase :: {:phase, atom()}
+  @type directive :: game_action | game_phase
+
+  @type directives :: [directive]
+
+  @type directive_result ::
+          {:ok, term(), struct()}
+          | :not_implemented
+          | :game_complete
+
+  # How do i want the directive arg to look like
+  # especially when nested
 
   @doc """
-  Defines a catan game state.
+  Defines a catan game phase.
 
-  Shorthand for `{:state, name, opts || []}`
+  Shorthand for `{:phase, name}`
   """
-  defmacro state(name, opts \\ []) do
-    quote bind_quoted: [name: name, opts: opts] do
-      {:state, name, opts}
+  defmacro phase(name) do
+    quote bind_quoted: [name: name] do
+      {:phase, name}
     end
   end
 
   @doc """
   Defines a catan game action.
 
-  Shorthand for `{:action, name, opts || []}`
+  Shorthand for `{:action, name}`
   """
-  defmacro action(name, opts \\ []) do
-    quote bind_quoted: [name: name, opts: opts] do
-      {:action, name, opts}
+  defmacro action(name) do
+    quote bind_quoted: [name: name] do
+      {:action, name}
     end
   end
 end

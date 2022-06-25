@@ -87,8 +87,12 @@ defmodule Catan.GameCoordinator do
 
   @impl true
   def handle_call({:delete_lobby, id}, _from, state) do
-    {_, state} = pop_in(state, [:lobbies, id])
-    {:reply, :ok, state}
+    {got, state} = pop_in(state, [:lobbies, id])
+
+    case got do
+      nil -> {:reply, :noop, state}
+      _ -> {:reply, :ok, state}
+    end
   end
 
   @impl true
@@ -121,13 +125,25 @@ defmodule Catan.GameCoordinator do
         {Catan.Game, opts}
       )
       |> case do
-        {:error, _} = result ->
-          Logger.info("bad thing happened: #{inspect(result)}")
-          result
-
         {:ok, _pid} ->
           Logger.info("Started game: #{id}")
           {:ok, id}
+
+        {:error, :no_lobby} = result ->
+          Logger.error("Lobby does not exist: #{id}")
+          result
+
+        {:error, {:already_started, _pid}} = result ->
+          Logger.error("Game already started: #{id}")
+          result
+
+        {:error, {_, stack}} = result when is_list(stack) ->
+          Logger.error("error\n#{Exception.format_stacktrace(stack)}")
+          result
+
+        {:error, err} = result ->
+          Logger.error("error\n#{inspect(err)}")
+          result
       end
 
     {:reply, result, state}

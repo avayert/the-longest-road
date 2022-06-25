@@ -1,5 +1,6 @@
 defmodule Catan.Engine.GameMode.Standard do
   use Catan.Engine.GameMode
+  require Logger
 
   defmodule ModeState do
     use TypedStruct
@@ -18,45 +19,52 @@ defmodule Catan.Engine.GameMode.Standard do
       ore: 19,
       brick: 19
     ]
-    @default_supply [
-      settlement: 5,
-      city: 4,
-      road: 15
-    ]
+    def default_supply,
+      do: [
+        settlement: 5,
+        city: 4,
+        road: 15
+      ]
 
     @typep decktype :: keyword(non_neg_integer())
+    @typep player_tmp :: struct()
 
     typedstruct do
-      field :mode, module(), default: __MODULE__
+      field :mode, module(), default: Catan.Engine.GameMode.Standard
 
       field :development_deck, decktype(), default: @default_deck
       field :bank, decktype(), default: @default_bank
-      field :building_supply, %{any() => decktype()}, default: %{}
+      field :building_supply, %{player_tmp() => decktype()}, default: %{}
+
+      field :longest_road, player_tmp() | nil, default: nil
+      field :largest_army, player_tmp() | nil, default: nil
 
       field :trades, list(), default: []
-      field :winner, term() | nil, default: nil
+      field :winner, player_tmp() | nil, default: nil
     end
 
     use Accessible
 
     def new(), do: %__MODULE__{}
+
+    def new(game_state) do
+      supply =
+        for player <- game_state.lobby.players, reduce: %{} do
+          acc -> Map.put_new(acc, player, ModeState.default_supply())
+        end
+
+      %__MODULE__{building_supply: supply}
+    end
   end
 
-  # how do i actually do states
-  # states are like a stack so i cant just make a list
-  # I think i actually need functions to trace the state path
-  # i could have either a bunch of functions that return other functions or whatever
-  # OR i can have one function with a big fucking case but that might have issues
-
-  def init(_state, _opts) do
-    {:ok, action(:generate_board)}
+  @impl true
+  def init(state) do
+    modestate = ModeState.new(state)
+    {:ok, modestate, [action: :generate_board]}
   end
 
-  def generate_board() do
-    {:ok, nil}
-  end
-
-  def handle_action({:action, opts}, state) do
-    {:idk, :next_state, {:something?, opts}, state}
+  def handle_directive([{:action, :generate_board}], state) do
+    Logger.info("Generating map")
+    {:ok, [action: :setup_board_state], state}
   end
 end

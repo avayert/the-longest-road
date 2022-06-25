@@ -3,7 +3,8 @@ defmodule Catan.Lobby do
 
   alias Catan.Utils
 
-  @type game_speed :: :no_timer | :slow | :normal | :fast | :turbo
+  @type game_speed :: :none | :slow | :normal | :fast | :turbo
+  # TODO: figure out a system to get times for different state directives
 
   typedstruct do
     field :id, String.t(), enforce: true
@@ -20,7 +21,7 @@ defmodule Catan.Lobby do
     field :win_vp, pos_integer(), default: 10
 
     field :game_mode, module(), default: Catan.Engine.GameMode.Standard
-    field :expansion, [module()], default: []
+    field :expansion, module(), default: nil
     field :scenarios, [module()], default: []
     # TODO
     field :map_template, any(), default: nil
