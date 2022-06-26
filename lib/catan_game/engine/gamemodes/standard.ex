@@ -57,6 +57,11 @@ defmodule Catan.Engine.GameMode.Standard do
     end
   end
 
+  # Maybe i shouldnt do this options thing and instead:
+  # handle_phase(...) does some sort of choice mechanism
+  # where it sends data back indicating a choice needs to be made
+  # from the provided options like my current function does
+
   @impl true
   def init(state) do
     modestate = ModeState.new(state)
@@ -65,7 +70,18 @@ defmodule Catan.Engine.GameMode.Standard do
 
   @impl true
   def handle_action([{:action, :generate_board}], state) do
-    Logger.info("Generating map")
+    Logger.info("Pretending to generate map")
     {:ok, [action: :setup_board_state], state}
+  end
+
+  @impl true
+  def handle_action([{:action, :setup_board_state}], state) do
+    Logger.info("Pretending to setup the board state")
+    {:ok, [phase: :choose_turn_order], state}
+  end
+
+  @impl true
+  def phase_options([phase: :choose_turn_order], _state) do
+    %{options: [action(:randomize), phase(:roll)]}
   end
 end

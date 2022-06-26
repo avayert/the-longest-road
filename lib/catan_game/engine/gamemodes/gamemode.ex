@@ -32,6 +32,11 @@ defmodule Catan.Engine.GameMode do
   #             state :: game_state()
   #   ) :: Helpers.directive_result()
 
+  @callback phase_options(
+              phase :: Helpers.directives(),
+              state :: game_state()
+            ) :: %{required(:options) => [Helpers.directive(), ...]}
+
   # @optional_callbacks [
   #   # init: 1
   # ]
