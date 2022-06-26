@@ -60,10 +60,11 @@ defmodule Catan.Engine.GameMode.Standard do
   @impl true
   def init(state) do
     modestate = ModeState.new(state)
-    {:ok, modestate, [action: :generate_board]}
+    {:ok, [action: :generate_board], modestate}
   end
 
-  def handle_directive([{:action, :generate_board}], state) do
+  @impl true
+  def handle_action([{:action, :generate_board}], state) do
     Logger.info("Generating map")
     {:ok, [action: :setup_board_state], state}
   end

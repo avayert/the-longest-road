@@ -11,7 +11,7 @@ defmodule Catan.Game do
 
     typedstruct do
       field :lobby, Catan.Lobby.t(), enforce: true
-      field :current_directive, [], default: []
+      field :game_directives, [], default: []
       field :mode_states, %{module() => %{atom() => term()}}, default: %{}
       field :mode_tree, [], default: []
     end
@@ -22,6 +22,9 @@ defmodule Catan.Game do
   end
 
   @type game_state :: GameState.t()
+  @type tick_result ::
+          {:ok, Helpers.directives(), game_state()}
+          | {:err, game_state()}
 
   def start_link(opts) do
     {name, state} = Keyword.pop(opts, :name)
@@ -47,16 +50,16 @@ defmodule Catan.Game do
       end)
 
     mode_states =
-      for {:ok, modestate, _directive} <- mode_inits, reduce: %{} do
+      for {:ok, _directive, modestate} <- mode_inits, reduce: %{} do
         acc -> Map.put(acc, modestate.mode, modestate)
       end
 
-    {_, _, [directive]} = Enum.find(mode_inits, fn {:ok, _state, dir} -> dir end)
+    {_, [directive], _} = Enum.find(mode_inits, fn {:ok, dir, _state} -> dir end)
 
     state =
       state
       |> Map.put(:mode_states, mode_states)
-      |> Map.update!(:current_directive, fn cur -> [directive | cur] end)
+      |> Map.update!(:game_directives, fn cur -> [directive | cur] end)
 
     :ok = CatanWeb.Endpoint.subscribe("game:#{state.lobby.id}")
     {:ok, state, {:continue, :init}}
@@ -82,43 +85,102 @@ defmodule Catan.Game do
 
   ## Actual functions
 
-  @spec resolve_directive(state :: game_state(), Helpers.directive()) :: any
-  def resolve_directive(state, directive) do
+  @spec tick_game(state :: game_state()) :: tick_result()
+  def tick_game(state) do
+    Logger.info("Ticking game state")
+    Logger.info("Resolving #{inspect(state.game_directives)}")
+
+    try do
+      {new_directives, new_state} = resolve_directive!(state, state.game_directives)
+
+      Logger.info("Resolved, game tick done")
+      Logger.info("Got new directives: #{inspect(new_directives)}")
+
+      {:ok, new_directives, new_state}
+    rescue
+      FunctionClauseError ->
+        Logger.warning("No function clause found for #{inspect(state.game_directives)}")
+        {:err, state}
+
+      e ->
+        Logger.error("Unknown error " <> Exception.format(:error, e, __STACKTRACE__))
+        {:err, state}
+    end
+  end
+
+  @spec resolve_directive!(state :: game_state(), Helpers.directive()) :: any
+  def resolve_directive!(state, directive) do
     Enum.reduce_while(state.mode_tree, nil, fn mod, _acc ->
-      case query_game_mode(state, mod, directive) do
-        {:ok, next_directive, state} -> {:halt, {next_directive, state}}
-        :not_implemented -> {:cont, nil}
+      case dispatch(state, mod, directive) do
+        {:ok, next_directive, state} ->
+          {:halt, {next_directive, state}}
+
+        :not_implemented ->
+          {:cont, nil}
+
+        op ->
+          raise CaseClauseError, "No match for op: #{inspect(op)}"
       end
     end)
   end
 
-  def query_game_mode(state, mode, directive) do
-    apply(mode, :handle_directive, [directive, state])
+  def dispatch(state, mode, directives) do
+    case directives do
+      [{:action, _} | _] ->
+        apply(mode, :handle_action, [directives, state])
+
+      [{:phase, _} | _] ->
+        apply(mode, :handle_phase, [directives, state])
+    end
+  end
+
+  def handle_continue(:action, state) do
+    Logger.info("Doing continue for :action")
+    {:noreply, state}
+  end
+
+  def handle_continue(:phase, state) do
+    Logger.info("Doing continue for :phase")
+    {:noreply, state}
+  end
+
+  def handle_continue(:init, state) do
+    Logger.info("Game got continue for :init")
+
+    {:ok, state} = tick_game(state)
+
+    case state.game_directives do
+      [{:action, _} | _] ->
+        {:noreply, state, {:continue, :action}}
+
+      [{:phase, _} | _] ->
+        {:noreply, state}
+
+      :err ->
+        Logger.error(
+          "Bad(?) directive :err returned from:\n" <>
+            (Process.info(self(), :current_stacktrace)
+             |> elem(1)
+             |> Enum.drop(1)
+             |> Exception.format_stacktrace())
+        )
+
+      other ->
+        Logger.warning("unknown new directive: #{inspect(other)}")
+        {:noreply, state}
+    end
   end
 
   @impl true
   def handle_continue(op, state) do
     Logger.info("Game got continue op: #{inspect(op)}")
-    Logger.info("Resolving #{inspect(state.current_directive)}")
-
-    {thing, state} =
-      try do
-        {_thing, _state} = resolve_directive(state, state.current_directive)
-      rescue
-        FunctionClauseError ->
-          Logger.alert("No function clause found for #{inspect(state.current_directive)}")
-          {:err, state}
-
-        e ->
-          Logger.error(Exception.format(:error, e, __STACKTRACE__))
-          {:err, state}
-      end
-
-    Logger.info("Resolved, continue done")
-    Logger.info("game.ex:#{__ENV__.line}: got: #{inspect(thing)}")
-
-    # TODO: handle action vs phase continuance
-
     {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:player_input, player, event}, socket) do
+    Logger.info("Got player_input event from #{player}: #{event}")
+    # just do a genserver call lol
+    {:noreply, socket}
   end
 end

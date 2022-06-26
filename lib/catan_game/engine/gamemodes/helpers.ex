@@ -12,8 +12,8 @@ defmodule Catan.Engine.GameMode.Helpers do
           | :not_implemented
           | :game_complete
 
-  # How do i want the directive arg to look like
-  # especially when nested
+  # I might need different ops than just :ok
+  # like to explicitly skip/defer/update_and_continue
 
   @doc """
   Defines a catan game phase.
