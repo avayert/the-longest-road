@@ -39,6 +39,7 @@ defmodule Catan.Game do
   @impl true
   def init(opts) do
     Logger.info("Starting game: #{Keyword.get(opts, :lobby).id}")
+
     state =
       opts
       |> Enum.into(%{})
@@ -66,7 +67,7 @@ defmodule Catan.Game do
     {:ok, state, {:continue, :init}}
   end
 
-  @spec build_mode_list(game_state()) :: game_state()
+  @spec build_mode_list(state :: game_state()) :: game_state()
   def build_mode_list(state) do
     state
     |> Map.update!(:mode_tree, fn _ ->
@@ -107,7 +108,7 @@ defmodule Catan.Game do
     Logger.info("Resolving #{inspect(state.game_directives)}")
 
     try do
-      {new_directives, new_state} = resolve_directive!(state, state.game_directives)
+      {new_directives, new_state} = resolve_directives(state, state.game_directives)
 
       Logger.info("Resolved, game tick done")
       Logger.info("Got new directives: #{inspect(new_directives)}")
@@ -126,30 +127,20 @@ defmodule Catan.Game do
     end
   end
 
-  @spec resolve_directive!(state :: game_state(), Helpers.directive()) :: any
-  def resolve_directive!(state, directive) do
+  @spec resolve_directives(
+          state :: game_state(),
+          directives :: Helpers.directives()
+        ) :: any()
+  def resolve_directives(state, directives) do
     Enum.reduce_while(state.mode_tree, nil, fn mod, _acc ->
-      case dispatch(state, mod, directive) do
+      case mod.dispatch(directives, state) do
         {:ok, next_directive, state} ->
           {:halt, {next_directive, state}}
 
         :not_implemented ->
           {:cont, nil}
-
-        op ->
-          raise CaseClauseError, "No match for op: #{inspect(op)}"
       end
     end)
-  end
-
-  def dispatch(state, mode, directives) do
-    case directives do
-      [{:action, _} | _] ->
-        apply(mode, :handle_action, [directives, state])
-
-      [{:phase, _} | _] ->
-        apply(mode, :handle_phase, [directives, state])
-    end
   end
 
   # @impl true

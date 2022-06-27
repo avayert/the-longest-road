@@ -8,6 +8,11 @@ defmodule Catan.Engine.GameMode do
   @callback init(game_state :: game_state()) ::
               {:ok, Helpers.directive() | nil, struct()}
 
+  @callback dispatch(
+              directives :: Helpers.directives(),
+              game_state :: game_state()
+            ) :: Helpers.directive_result()
+
   @callback handle_action(
               action :: Helpers.directives(),
               state :: game_state()
@@ -37,9 +42,9 @@ defmodule Catan.Engine.GameMode do
               state :: game_state()
             ) :: %{required(:options) => [Helpers.directive(), ...]}
 
-  # @optional_callbacks [
-  #   # init: 1
-  # ]
+  @optional_callbacks [
+    phase_options: 2
+  ]
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -54,11 +59,23 @@ defmodule Catan.Engine.GameMode do
       @type directive_result :: Helpers.directive_result()
 
       @impl true
+      @spec dispatch(
+              directives :: Helpers.directives(),
+              state :: game_state()
+            ) :: directive_result()
+      def dispatch([directive | _] = directives, state) do
+        case directive do
+          {:action, _} -> handle_action(directives, state)
+          {:phase, _} -> handle_phase(directives, state)
+        end
+      end
+
+      @impl true
       @spec handle_action(
               action :: Helpers.game_action(),
               player :: any(),
               input :: any(),
-              state :: game_state
+              state :: game_state()
             ) :: directive_result()
       def handle_action(action, player, input, state) do
         :not_implemented
@@ -67,7 +84,7 @@ defmodule Catan.Engine.GameMode do
       @impl true
       @spec handle_action(
               action :: Helpers.game_action(),
-              state :: game_state
+              state :: game_state()
             ) :: directive_result()
       def handle_action(action, state) do
         :not_implemented
@@ -76,13 +93,14 @@ defmodule Catan.Engine.GameMode do
       @impl true
       @spec handle_phase(
               phase :: Helpers.game_phase(),
-              state :: game_state
+              state :: game_state()
             ) :: directive_result()
       def handle_phase(phase, state) do
         :not_implemented
       end
 
-      defoverridable handle_action: 2,
+      defoverridable dispatch: 2,
+                     handle_action: 2,
                      handle_action: 4,
                      handle_phase: 2
     end
