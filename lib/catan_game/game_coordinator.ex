@@ -80,7 +80,9 @@ defmodule Catan.GameCoordinator do
       |> Map.put(id, lobby)
 
     state = %State{state | lobbies: lobby_list}
-    # state = update_in(state[:lobbies][id], fn _ -> lobby end)
+
+    # TODO: move lobby state to an agent or something
+    #       so it doesnt die if the gc does
 
     {:reply, {id, lobby}, state}
   end
@@ -116,6 +118,18 @@ defmodule Catan.GameCoordinator do
 
   @impl true
   def handle_call({:start_game, id}, _from, state) do
+    {result, state} =
+      case Map.get(state.lobbies, id) do
+        nil -> {{:error, :no_lobby}, state}
+        _lobby -> start_game(id, state)
+      end
+
+    {:reply, result, state}
+  end
+
+  ## Impl functions
+
+  defp start_game(id, state) do
     lobby = Map.get(state.lobbies, id)
     opts = [name: via(id, :game), lobby: lobby]
 
@@ -146,7 +160,9 @@ defmodule Catan.GameCoordinator do
           result
       end
 
-    {:reply, result, state}
+    state = put_in(state, [:lobbies, id, :game_started], true)
+
+    {result, state}
   end
 
   ## Public API
@@ -167,7 +183,7 @@ defmodule Catan.GameCoordinator do
     GenServer.call(__MODULE__, {:get_lobby, id})
   end
 
-  @spec get_lobbies() :: [String.t()]
+  @spec get_lobbies() :: [Catan.Lobby.t()]
   def get_lobbies() do
     GenServer.call(__MODULE__, {:get_lobbies})
   end
@@ -175,6 +191,11 @@ defmodule Catan.GameCoordinator do
   @spec lobby_exists?(id :: String.t()) :: boolean()
   def lobby_exists?(id) do
     GenServer.call(__MODULE__, {:does_lobby_exist, id})
+  end
+
+  @spec started?(id :: String.t()) :: boolean()
+  def started?(id) do
+    GenServer.call(__MODULE__, {:is_started, id})
   end
 
   # Games

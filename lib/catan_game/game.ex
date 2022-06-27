@@ -37,9 +37,10 @@ defmodule Catan.Game do
   end
 
   @impl true
-  def init(state) do
+  def init(opts) do
+    Logger.info("Starting game: #{Keyword.get(opts, :lobby).id}")
     state =
-      state
+      opts
       |> Enum.into(%{})
       |> GameState.new()
       |> build_mode_list()
