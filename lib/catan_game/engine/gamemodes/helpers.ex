@@ -1,19 +1,17 @@
 defmodule Catan.Engine.GameMode.Helpers do
-  @moduledoc false
+  @moduledoc """
+  Contains the `action` and `phase` macros and some types
+  """
 
-  @type game_action :: {:action, atom()}
-  @type game_phase :: {:phase, atom()}
-  @type directive :: game_action | game_phase
-
+  @type directive_type :: :action | :phase
+  @type directive :: {directive_type(), atom()}
   @type directives :: [directive]
 
   @type directive_result ::
           {:ok, term(), struct()}
+          | {:error, term()}
+          | {:game_complete, struct()}
           | :not_implemented
-          | :game_complete
-
-  # I might need different ops than just :ok
-  # like to explicitly skip/defer/update_and_continue
 
   @doc """
   Defines a catan game phase.

@@ -67,12 +67,17 @@ defmodule Catan.Engine.GameMode do
         case directive do
           {:action, _} -> handle_action(directives, state)
           {:phase, _} -> handle_phase(directives, state)
+          {other, _} -> {:error, :unknown_op}
         end
+      end
+
+      def dispatch([], state) do
+        {:error, :no_directives}
       end
 
       @impl true
       @spec handle_action(
-              action :: Helpers.game_action(),
+              action :: {:action, atom()},
               player :: any(),
               input :: any(),
               state :: game_state()
@@ -83,7 +88,7 @@ defmodule Catan.Engine.GameMode do
 
       @impl true
       @spec handle_action(
-              action :: Helpers.game_action(),
+              action :: {:action, atom()},
               state :: game_state()
             ) :: directive_result()
       def handle_action(action, state) do
@@ -92,7 +97,7 @@ defmodule Catan.Engine.GameMode do
 
       @impl true
       @spec handle_phase(
-              phase :: Helpers.game_phase(),
+              phase :: {:phase, atom()},
               state :: game_state()
             ) :: directive_result()
       def handle_phase(phase, state) do
