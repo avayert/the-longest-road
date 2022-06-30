@@ -24,4 +24,15 @@ defmodule Catan.Engine.GameMode.Helpers do
       [{:action, name}]
     end
   end
+
+  @doc """
+  Flattens a list of directive ops.
+
+  Shorthand for `List.flatten(items)`
+  """
+  defmacro choices(items) do
+    quote do
+      List.flatten(unquote(items))
+    end
+  end
 end

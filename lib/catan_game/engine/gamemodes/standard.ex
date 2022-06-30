@@ -2,7 +2,7 @@ defmodule Catan.Engine.GameMode.Standard do
   use Catan.Engine.GameMode
   require Logger
 
-  # import GameMode.Helpers
+  import GameMode.Helpers
   alias Catan.Engine.Directive
   require Directive
 
@@ -91,7 +91,15 @@ defmodule Catan.Engine.GameMode.Standard do
     #
     Logger.info("Pretending to setup the board state")
 
-    {:ok, Directive.new(phase: :choose_turn_order), state}
+    {:ok,
+     Directive.new(
+       phase: :choose_turn_order,
+       choices:
+         choices([
+           action(:randomize),
+           phase(:roll)
+         ])
+     ), state}
   end
 
   # @impl true

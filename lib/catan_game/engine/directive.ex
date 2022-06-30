@@ -11,6 +11,7 @@ defmodule Catan.Engine.Directive do
     field :op, op(), enforce: true
     field :ctx, module()
     field :meta, any()
+    field :choices, list(), default: []
   end
 
   # I hate it
