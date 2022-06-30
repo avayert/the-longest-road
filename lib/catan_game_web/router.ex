@@ -14,22 +14,6 @@ defmodule CatanWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", CatanWeb do
-    pipe_through :browser
-
-    # get "/", PageController, :index
-    live "/", MainLive, :index
-    get "/:id", RedirectController, :route_id
-
-    # we need /catan, //lobby, //watch, //game/:id
-    # if we're not doing the subdomain that is
-  end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", CatanWeb do
-  #   pipe_through :api
-  # end
-
   # Enables LiveDashboard only for development
   #
   # If you want to use the LiveDashboard in production, you should put
@@ -46,6 +30,22 @@ defmodule CatanWeb.Router do
       live_dashboard "/dashboard", metrics: CatanWeb.Telemetry
     end
   end
+
+  scope "/", CatanWeb do
+    pipe_through :browser
+
+    # get "/", PageController, :index
+    live "/", MainLive, :index
+    get "/:id", RedirectController, :route_id
+
+    # we need /catan, //lobby, //watch, //game/:id
+    # if we're not doing the subdomain that is
+  end
+
+  # Other scopes may use custom stacks.
+  # scope "/api", CatanWeb do
+  #   pipe_through :api
+  # end
 
   # Enables the Swoosh mailbox preview in development.
   #
