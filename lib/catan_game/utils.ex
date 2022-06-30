@@ -43,4 +43,12 @@ defmodule Catan.Utils do
       if r <= w, do: {:halt, k}, else: {:cont, r}
     end)
   end
+
+  def get_stacktrace(drop \\ 2) do
+    "Stacktrace for #{inspect(self())}:\n" <>
+      (Process.info(self(), :current_stacktrace)
+       |> elem(1)
+       |> Enum.drop(drop)
+       |> Exception.format_stacktrace())
+  end
 end

@@ -2,6 +2,10 @@ defmodule Catan.Engine.GameMode.Standard do
   use Catan.Engine.GameMode
   require Logger
 
+  # import GameMode.Helpers
+  alias Catan.Engine.Directive
+  require Directive
+
   defmodule ModeState do
     use TypedStruct
 
@@ -65,23 +69,33 @@ defmodule Catan.Engine.GameMode.Standard do
   @impl true
   def init(state) do
     modestate = ModeState.new(state)
-    {:ok, [action: :generate_board], modestate}
+    {:ok, Directive.new(action: :generate_board), modestate}
   end
 
   @impl true
-  def handle_action([{:action, :generate_board}], state) do
+  def handle_action(
+        [%Directive{op: {:action, :generate_board}}],
+        state
+      ) do
+    #
     Logger.info("Pretending to generate map")
-    {:ok, [action: :setup_board_state], state}
+
+    {:ok, Directive.new(action: :setup_board_state), state}
   end
 
   @impl true
-  def handle_action([{:action, :setup_board_state}], state) do
+  def handle_action(
+        [%Directive{op: {:action, :setup_board_state}}],
+        state
+      ) do
+    #
     Logger.info("Pretending to setup the board state")
-    {:ok, [phase: :choose_turn_order], state}
+
+    {:ok, Directive.new(phase: :choose_turn_order), state}
   end
 
-  @impl true
-  def phase_options([phase: :choose_turn_order], _state) do
-    %{options: [action(:randomize), phase(:roll)]}
-  end
+  # @impl true
+  # def phase_options_wip([phase: :choose_turn_order], _state) do
+  #   %{options: [action(:randomize), phase(:roll)]}
+  # end
 end

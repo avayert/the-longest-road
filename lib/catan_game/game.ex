@@ -4,7 +4,11 @@ defmodule Catan.Game do
   """
 
   use GenServer, restart: :transient
+
   require Logger
+
+  alias Catan.Engine.Directive
+  require Directive
 
   defmodule GameState do
     use TypedStruct
@@ -22,9 +26,10 @@ defmodule Catan.Game do
   end
 
   @type game_state :: GameState.t()
+  @type dispatch_result :: Catan.Engine.GameMode.dispatch_result()
   @type tick_result ::
-          {:ok, Helpers.directives(), game_state()}
-          | {:err, atom(), game_state()}
+          {:ok, Directive.stack(), game_state()}
+          | {:error, atom() | {atom(), term()}, game_state()}
 
   def start_link(opts) do
     {name, state} = Keyword.pop(opts, :name)
@@ -56,7 +61,7 @@ defmodule Catan.Game do
         acc -> Map.put(acc, modestate.mode, modestate)
       end
 
-    {_, [directive], _} = Enum.find(mode_inits, fn {:ok, dir, _state} -> dir end)
+    {_, directive, _} = Enum.find(mode_inits, fn {:ok, dir, _state} -> dir end)
 
     state =
       state
@@ -85,11 +90,15 @@ defmodule Catan.Game do
     end
   end
 
-  defp push_directive(directive, state) do
+  defp push_directive(state, directive) when is_struct(directive, Directive) do
     Map.update!(state, :game_directives, fn cur -> [directive | cur] end)
   end
 
-  defp put_directives(directives, state) do
+  defp push_directive(state, directive) do
+    push_directive(state, Directive.new(directive))
+  end
+
+  defp put_directives(state, directives) do
     Map.update!(state, :game_directives, fn _ -> directives end)
   end
 
@@ -108,30 +117,54 @@ defmodule Catan.Game do
     Logger.info("Resolving #{inspect(state.game_directives)}")
 
     try do
-      {new_directives, new_state} = resolve_directives(state, state.game_directives)
+      dispatch(state, state.game_directives)
+      |> case do
+        {dir, new_state} when is_struct(dir, Directive) ->
+          {:ok, [dir], new_state}
 
-      Logger.info("Resolved, game tick done")
-      Logger.info("Got new directives: #{inspect(new_directives)}")
+        {[dir | _] = dirs, new_state} when is_struct(dir, Directive) ->
+          {:ok, dirs, new_state}
 
-      new_state = put_directives(new_directives, new_state)
+        {[], new_state} ->
+          {:error, :no_directives, new_state}
 
-      {:ok, new_directives, new_state}
+        nil ->
+          {:error, :no_gamemode_match, state}
+
+        wtf ->
+          {:error, {:unknown_result, wtf}, state}
+      end
+      |> case do
+        {:ok, new_directives, new_state} ->
+          Logger.info("Resolved, game tick done")
+          Logger.info("Got new directives: #{inspect(new_directives)}")
+
+          new_state = put_directives(new_state, new_directives)
+          {:ok, new_directives, new_state}
+
+        {:error, why, _state} = result ->
+          Logger.error("Error doing dispatch: #{why}")
+          result
+      end
     rescue
       FunctionClauseError ->
-        Logger.warning("No function clause found for #{inspect(state.game_directives)}")
-        {:err, :no_clause, state}
+        Logger.error(
+          "No function clause found for #{inspect(state.game_directives)}\n" <>
+            Catan.Utils.get_stacktrace()
+        )
+        {:error, :no_clause, state}
 
       e ->
-        Logger.error("Unknown error " <> Exception.format(:error, e, __STACKTRACE__))
-        {:err, e, state}
+        Logger.error("Unhandled error " <> Exception.format(:error, e, __STACKTRACE__))
+        {:error, e, state}
     end
   end
 
-  @spec resolve_directives(
+  @spec dispatch(
           state :: game_state(),
-          directives :: Helpers.directives()
+          directives :: DirectiveStack.t()
         ) :: any()
-  def resolve_directives(state, directives) do
+  def dispatch(state, directives) do
     Enum.reduce_while(state.mode_tree, nil, fn mod, _acc ->
       case mod.dispatch(directives, state) do
         {:ok, next_directive, state} ->
@@ -165,23 +198,27 @@ defmodule Catan.Game do
         {:ok, _directives, state} ->
           state
 
-        {:err, error, state} ->
+        {:error, error, state} ->
           Logger.error("Tick returned error: #{inspect(error)}")
-          state |> push_directive(phase: :game_error)
+          state |> push_directive(game_error: error)
           # TODO: maybe change this to [error: :(old directive)]?
       end
 
     case state.game_directives do
-      [{:action, _} | _] ->
+      [%Directive{op: {:action, _}} | _] ->
         {:noreply, state, {:continue, :action}}
 
-      [{:phase, _} | _] = cur_dirs ->
+      [%Directive{op: {:phase, _}} | _] = cur_dirs ->
         Logger.info("End of the line for #{inspect(cur_dirs)}")
         {:noreply, state}
 
-      :err ->
+      [%Directive{op: {:game_error, error}} | _] ->
+        Logger.error("Game loop failed with error: #{error}")
+        {:noreply, state}
+
+      :error ->
         Logger.error(
-          "Bad(?) directive :err returned from:\n" <>
+          "Bad(?) directive :error returned from:\n" <>
             (Process.info(self(), :current_stacktrace)
              |> elem(1)
              |> Enum.drop(1)
