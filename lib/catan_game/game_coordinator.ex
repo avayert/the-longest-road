@@ -91,6 +91,7 @@ defmodule Catan.GameCoordinator do
   def handle_call({:delete_lobby, id}, _from, state) do
     {got, state} = pop_in(state, [:lobbies, id])
 
+    # TODO: {:reply, :game_already_started, state}
     case got do
       nil -> {:reply, :noop, state}
       _ -> {:reply, :ok, state}
@@ -125,6 +126,13 @@ defmodule Catan.GameCoordinator do
       end
 
     {:reply, result, state}
+  end
+
+  @impl true
+  def handle_call({:kill_game, id}, _from, state) do
+    res = GenServer.stop(via(id, :game), :shutdown)
+    # TODO: remove lobby or reset lobby?
+    {:reply, res, state}
   end
 
   ## Impl functions
@@ -203,6 +211,11 @@ defmodule Catan.GameCoordinator do
   @spec start_game(id :: String.t()) :: :ok | {:error, atom()}
   def start_game(id) do
     GenServer.call(__MODULE__, {:start_game, id})
+  end
+
+  @spec kill_game(id :: String.t()) :: :ok | {:error, atom()}
+  def kill_game(id) do
+    GenServer.call(__MODULE__, {:kill_game, id})
   end
 
   # testing functions

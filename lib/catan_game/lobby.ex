@@ -23,7 +23,7 @@ defmodule Catan.Lobby do
     field :game_mode, module(), default: Catan.Engine.GameMode.Standard
     field :expansion, module(), default: nil
     field :scenarios, [module()], default: []
-    # TODO
+    # TODO: map stuff
     field :map_template, any(), default: nil
   end
 

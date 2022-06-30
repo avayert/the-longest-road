@@ -21,7 +21,7 @@ defmodule Catan.Engine.GameMap do
   import Integer,
     only: [
       is_even: 1,
-      is_odd: 1
+      # is_odd: 1
     ]
 
   @type tile :: HexTile.t()
@@ -124,7 +124,7 @@ defmodule Catan.Engine.GameMap do
   end
 
   # "Translate bigmap coordinates to an object in the real map"
-  defp to_tilemap_object(tile, :edgemap) when is_coordlike(tile) do
+  def to_tilemap_object(tile, :edgemap) when is_coordlike(tile) do
     {q, r} = coords_from(tile)
     {qn, rn} = {rem(q, 2), rem(r, 2)}
 
@@ -136,8 +136,8 @@ defmodule Catan.Engine.GameMap do
     end
   end
 
-  defp to_tilemap_object!(tile, :cornermap) when is_coordlike(tile) do
-    {q, r} = coords_from(tile)
+  def to_tilemap_object!(tile, :cornermap) when is_coordlike(tile) do
+    {_q, _r} = coords_from(tile)
     # this is going to be scuffed as hell
     # basically everything is aligned diagonally
     # if we just subtract vectors favorably, we'll reach the inner ring
@@ -146,7 +146,7 @@ defmodule Catan.Engine.GameMap do
     nil
   end
 
-  defp parity?(n1, n2) when is_integer(n1) and is_integer(n2) do
+  def parity?(n1, n2) when is_integer(n1) and is_integer(n2) do
     is_even(n1 + n2)
   end
 
