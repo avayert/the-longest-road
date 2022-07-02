@@ -38,7 +38,7 @@ defmodule Catan.GameCoordinator do
   @typep via_registries :: :game | :map | :player
 
   @spec via(id :: String.t(), type :: via_registries) :: via_tuple
-  defp via(id, type) do
+  def via(id, type) do
     case type do
       :game -> {:via, Registry, {GameRegistry, id}}
       :map -> {:via, Registry, {MapRegistry, id}}
@@ -135,6 +135,13 @@ defmodule Catan.GameCoordinator do
     {:reply, res, state}
   end
 
+  @impl true
+  def handle_call({:get_all_games}, _from, state) do
+    ids = Registry.select(GameRegistry, [{{:"$1", :_, :_}, [], [:"$1"]}])
+    # Registry.select(MyRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+    {:reply, {:ok, ids}, state}
+  end
+
   ## Impl functions
 
   defp start_game(id, state) do
@@ -148,23 +155,23 @@ defmodule Catan.GameCoordinator do
       )
       |> case do
         {:ok, _pid} ->
-          Logger.info("Started game: #{id}")
+          Logger.info("[GC] Started game: #{id}")
           {:ok, id}
 
         {:error, :no_lobby} = result ->
-          Logger.error("Lobby does not exist: #{id}")
+          Logger.error("[GC] Lobby does not exist: #{id}")
           result
 
         {:error, {:already_started, _pid}} = result ->
-          Logger.error("Game already started: #{id}")
+          Logger.error("[GC] Game already started: #{id}")
           result
 
         {:error, {_, stack}} = result when is_list(stack) ->
-          Logger.error("error\n#{Exception.format_stacktrace(stack)}")
+          Logger.error("[GC] error\n#{Exception.format_stacktrace(stack)}")
           result
 
         {:error, err} = result ->
-          Logger.error("error\n#{inspect(err)}")
+          Logger.error("[GC] error\n#{inspect(err)}")
           result
       end
 
@@ -218,6 +225,11 @@ defmodule Catan.GameCoordinator do
     GenServer.call(__MODULE__, {:kill_game, id})
   end
 
+  @spec get_all_games() :: {:ok, [] | [String.t()]} | {:error, atom()}
+  def get_all_games() do
+    GenServer.call(__MODULE__, {:get_all_games})
+  end
+
   # testing functions
 end
 
@@ -234,20 +246,3 @@ end
 # defp via_tuple(id) do
 #   {:via, Registry, {GameRegistry, id}}
 # end
-#
-#
-# opts = [name: via(id, :lobby), id: id]
-#
-# result =
-#   DynamicSupervisor.start_child(
-#     LobbyManager,
-#     {Catan.Lobby, opts}
-#   )
-#   |> case do
-#     {:error, _} = result ->
-#       result |> IO.inspect(label: "bad thing happened")
-#
-#     {:ok, _pid} ->
-#       IO.inspect("created lobby: #{id}")
-#       {:ok, id}
-#   end

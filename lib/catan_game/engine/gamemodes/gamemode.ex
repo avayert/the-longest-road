@@ -5,14 +5,15 @@ defmodule Catan.Engine.GameMode do
 
   @type stack :: Directive.stack()
   @type game_state :: Catan.Game.GameState.t()
+  @type mode_state :: struct()
   @type dispatch_result ::
-          {:ok, stack(), struct()}
+          {:ok, stack(), game_state()}
           | {:error, term()}
-          | {:game_complete, struct()}
+          | {:game_complete, game_state()}
           | :not_implemented
 
   @callback init(game_state :: game_state()) ::
-              {:ok, Directive.t() | nil, struct()}
+              {:ok, Directive.t() | nil, mode_state()}
 
   @callback dispatch(
               stack :: stack(),
@@ -31,37 +32,7 @@ defmodule Catan.Engine.GameMode do
               state :: game_state()
             ) :: dispatch_result()
 
-  @callback handle_action(
-              action :: stack(),
-              state :: game_state()
-            ) :: dispatch_result()
-
-  @callback handle_action(
-              action :: stack(),
-              player :: any(),
-              input :: any(),
-              state :: game_state()
-            ) :: dispatch_result()
-
-  @callback handle_phase(
-              phase :: stack(),
-              state :: game_state()
-            ) :: dispatch_result()
-
-  # @callback handle_phase(
-  #             phase :: Helpers.directives(),
-  #             player :: any(),
-  #             input :: any(),
-  #             state :: game_state()
-  #   ) :: dispatch_result()
-
-  # @callback phase_options_wip(
-  #             phase :: stack(),
-  #             state :: game_state()
-  #           ) :: %{required(:options) => [Directive.t(), ...]}
-
   @optional_callbacks [
-    # phase_options_wip: 2,
     handle_step: 2,
     handle_step: 4
   ]
@@ -75,7 +46,7 @@ defmodule Catan.Engine.GameMode do
       alias Catan.Engine.Directive
 
       @type stack :: GameMode.stack()
-      @type game_state :: Catan.Game.GameState.t()
+      @type game_state :: GameMode.game_state()
       @type return_t :: GameMode.dispatch_result()
 
       @impl true
@@ -85,49 +56,28 @@ defmodule Catan.Engine.GameMode do
             ) :: return_t()
       def dispatch([directive | _] = stack, state) do
         case directive.op do
-          {:action, _} -> handle_action(stack, state)
-          {:phase, _} -> handle_phase(stack, state)
+          {:action, _} -> handle_step(stack, state)
+          {:phase, _} -> handle_step(stack, state)
           {other, _} -> {:error, :unknown_op}
         end
       end
 
+      @impl true
       def dispatch([], state) do
         {:error, :no_directives}
       end
 
       @impl true
-      @spec handle_action(
-              action :: {:action, atom()},
-              player :: any(),
-              input :: any(),
+      @spec handle_step(
+              stack :: stack(),
               state :: game_state()
             ) :: return_t()
-      def handle_action(action, player, input, state) do
-        :not_implemented
-      end
-
-      @impl true
-      @spec handle_action(
-              action :: {:action, atom()},
-              state :: game_state()
-            ) :: return_t()
-      def handle_action(action, state) do
-        :not_implemented
-      end
-
-      @impl true
-      @spec handle_phase(
-              phase :: {:phase, atom()},
-              state :: game_state()
-            ) :: return_t()
-      def handle_phase(phase, state) do
+      def handle_step(stack, state) do
         :not_implemented
       end
 
       defoverridable dispatch: 2,
-                     handle_action: 2,
-                     handle_action: 4,
-                     handle_phase: 2
+                     handle_step: 2
     end
   end
 end

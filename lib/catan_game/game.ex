@@ -4,11 +4,15 @@ defmodule Catan.Game do
   """
 
   use GenServer, restart: :transient
+  # use GenServer, restart: :temporary
 
   require Logger
 
   alias Catan.Engine.Directive
   require Directive
+
+  require Catan.Engine.GameMode.Helpers
+  import Catan.Engine.GameMode.Helpers
 
   defmodule GameState do
     use TypedStruct
@@ -18,6 +22,8 @@ defmodule Catan.Game do
       field :game_directives, [], default: []
       field :mode_states, %{module() => %{atom() => term()}}, default: %{}
       field :mode_tree, [], default: []
+      field :map, any()
+      field :turn_order, [any()], default: []
     end
 
     use Accessible
@@ -43,7 +49,10 @@ defmodule Catan.Game do
 
   @impl true
   def init(opts) do
-    Logger.info("Starting game: #{Keyword.get(opts, :lobby).id}")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Starting game: #{Keyword.get(opts, :lobby).id}"
+    )
 
     state =
       opts
@@ -110,12 +119,28 @@ defmodule Catan.Game do
   #   end
   # end
 
+  def send_pubsub(state, data) do
+    Phoenix.PubSub.broadcast!(Catan.PubSub, "game:#{state.lobby.id}", data)
+    state
+  end
+
+  def send_pubsub_choices(state, choices) do
+    send_pubsub(state, {:choices, choices})
+  end
+
   ## Actual functions
 
   @spec step_game(state :: game_state()) :: step_result()
   def step_game(state) do
-    Logger.info("Stepping game state")
-    Logger.info("Resolving #{inspect(state.game_directives, pretty: true)}")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Stepping game state"
+    )
+
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Resolving #{inspect(state.game_directives, pretty: true)}"
+    )
 
     try do
       dispatch(state, state.game_directives)
@@ -137,20 +162,32 @@ defmodule Catan.Game do
       end
       |> case do
         {:ok, new_directives, new_state} ->
-          Logger.info("Resolved, game step done")
-          Logger.info("Got new directives: #{inspect(new_directives, pretty: true)}")
+          Logger.info(
+            "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+              "Resolved, game step done"
+          )
+
+          Logger.info(
+            "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+              "Got new directives: #{inspect(new_directives, pretty: true)}"
+          )
 
           new_state = put_directives(new_state, new_directives)
           {:ok, new_directives, new_state}
 
         {:error, why, _state} = result ->
-          Logger.error("Error doing dispatch: #{inspect(why)}")
+          Logger.error(
+            "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+              "Error doing dispatch: #{inspect(why)}"
+          )
+
           result
       end
     rescue
       FunctionClauseError ->
         Logger.error(
-          "No function clause found for " <>
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "No function clause found for " <>
             "#{inspect(state.game_directives, pretty: true)}\n" <>
             Catan.Utils.get_stacktrace()
         )
@@ -158,7 +195,11 @@ defmodule Catan.Game do
         {:error, :no_clause, state}
 
       e ->
-        Logger.error("Unhandled error " <> Exception.format(:error, e, __STACKTRACE__))
+        Logger.error(
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "Unhandled error " <> Exception.format(:error, e, __STACKTRACE__)
+        )
+
         {:error, e, state}
     end
   end
@@ -174,6 +215,11 @@ defmodule Catan.Game do
           {:halt, {next_directive, state}}
 
         :not_implemented ->
+          Logger.warning(
+            "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+              "Hit :not_implemented for #{inspect(directives)}"
+          )
+
           {:cont, nil}
       end
     end)
@@ -181,19 +227,40 @@ defmodule Catan.Game do
 
   @impl true
   def handle_cast({:player_input, whatever}, state) do
-    Logger.info("TODO: Handling player input: #{inspect(whatever)}")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "TODO: Handling player input: #{inspect(whatever)}"
+    )
+
+    # TODO: goes to the gmaemode
+
     {:noreply, state, {:continue, :step}}
   end
 
   @impl true
   def handle_continue(:choices, state) do
-    Logger.info("TODO: choices stuff, awaiting event")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "TODO: choices stuff, awaiting event"
+    )
+
+    choices =
+      state.game_directives
+      |> List.first()
+      |> get_in([:choices])
+
+    Logger.info("Sending #{inspect(choices)}")
+    send_pubsub_choices(state, choices)
+
     {:noreply, state}
   end
 
   @impl true
   def handle_continue(op, state) do
-    Logger.info("Game got continue op: #{inspect(op)}")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Game got continue op: #{inspect(op)}"
+    )
 
     state =
       case step_game(state) do
@@ -201,7 +268,11 @@ defmodule Catan.Game do
           state
 
         {:error, error, state} ->
-          Logger.error("Step returned error: #{inspect(error)}")
+          Logger.error(
+            "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+              "Step returned error: #{inspect(error)}"
+          )
+
           state |> push_directive(game_error: error)
       end
 
@@ -210,16 +281,27 @@ defmodule Catan.Game do
         {:noreply, state, {:continue, :action}}
 
       [%Directive{op: {:phase, _}, choices: [_ | _]} | _] = cur_dirs ->
-        Logger.info("Got phase choices #{inspect(cur_dirs)}")
+        Logger.info(
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "Got phase choices #{inspect(cur_dirs)}"
+        )
+
         {:noreply, state, {:continue, :choices}}
 
+      # TODO: check for phase with no choices
+
       [%Directive{op: {:phase, _}} | _] = cur_dirs ->
-        Logger.info("End of the line for #{inspect(cur_dirs)}")
+        Logger.info(
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "End of the line for #{inspect(cur_dirs)}"
+        )
+
         {:noreply, state}
 
       [%Directive{op: {:game_error, error}} | _] ->
         Logger.error(
-          "Game loop failed with error: #{inspect(error)}, " <>
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "Game loop failed with error: #{inspect(error)}, " <>
             "state was:\n#{inspect(state, pretty: true)}"
         )
 
@@ -227,7 +309,8 @@ defmodule Catan.Game do
 
       :error ->
         Logger.error(
-          "Bad(?) directive :error returned from:\n" <>
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "Bad(?) directive :error returned from:\n" <>
             (Process.info(self(), :current_stacktrace)
              |> elem(1)
              |> Enum.drop(1)
@@ -237,7 +320,11 @@ defmodule Catan.Game do
         {:stop, :shutdown, state}
 
       other ->
-        Logger.warning("unknown new directive: #{inspect(other)}")
+        Logger.warning(
+          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+            "unknown new directive: #{inspect(other)}"
+        )
+
         {:noreply, state}
     end
   end
@@ -245,14 +332,22 @@ defmodule Catan.Game do
   @impl true
   def terminate(reason, state) do
     Logger.warning(
-      "Game process #{inspect(self())} (id #{state.lobby.id}) is going down, " <>
-        "reason: #{inspect(reason)}, last known state:\n#{inspect(state, pretty: true)}"
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Game process #{inspect(self())} (id #{state.lobby.id}) is going down, " <>
+        "reason: #{reason}, "
+      # <>
+      # "last known state:\n#{inspect(state, pretty: true)}"
     )
+
+    # Logger.error("Stacktrace:\n" <> Exception.format_stacktrace(elem(reason, 1)))
   end
 
   @impl true
-  def handle_info({:player_input, player, event}, socket) do
-    Logger.info("Got player_input event from #{inspect(player)}: #{inspect(event)}")
+  def handle_info({:player_input, player, event}, state) do
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Got player_input event from #{inspect(player)}: #{inspect(event)}"
+    )
 
     # # # #
     # TODO: I also need a handle_input callback in gamemode huh
@@ -260,6 +355,18 @@ defmodule Catan.Game do
 
     # this might need to be a call if i need to do any validation or something
     GenServer.cast(self(), {:player_input, :todo})
-    {:noreply, socket}
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(stuff, state) do
+    Logger.info("Unhandled info event with data: #{inspect(stuff, pretty: true)}")
+    {:noreply, state}
+  end
+
+  #####
+
+  def test_send_input(id, stuff) do
+    Genserver.cast(Catan.GameCoordinator.via(id, :game), stuff)
   end
 end

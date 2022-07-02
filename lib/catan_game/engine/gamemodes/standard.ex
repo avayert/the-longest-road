@@ -61,11 +61,6 @@ defmodule Catan.Engine.GameMode.Standard do
     end
   end
 
-  # Maybe i shouldnt do this options thing and instead:
-  # handle_phase(...) does some sort of choice mechanism
-  # where it sends data back indicating a choice needs to be made
-  # from the provided options like my current function does
-
   @impl true
   def init(state) do
     modestate = ModeState.new(state)
@@ -73,23 +68,23 @@ defmodule Catan.Engine.GameMode.Standard do
   end
 
   @impl true
-  def handle_action(
+  def handle_step(
         [%Directive{op: {:action, :generate_board}}],
         state
       ) do
-    #
-    Logger.info("Pretending to generate map")
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Pretending to generate map")
+
+    state = struct!(state, map: :lol)
 
     {:ok, Directive.new(action: :setup_board_state), state}
   end
 
   @impl true
-  def handle_action(
+  def handle_step(
         [%Directive{op: {:action, :setup_board_state}}],
         state
       ) do
-    #
-    Logger.info("Pretending to setup the board state")
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Pretending to setup the board state")
 
     {:ok,
      Directive.new(
@@ -102,8 +97,77 @@ defmodule Catan.Engine.GameMode.Standard do
      ), state}
   end
 
-  # @impl true
-  # def phase_options_wip([phase: :choose_turn_order], _state) do
-  #   %{options: [action(:randomize), phase(:roll)]}
-  # end
+  @impl true
+  def handle_step(
+        [
+          %Directive{op: {:action, :randomize}},
+          %Directive{op: {:phase, :choose_turn_order}}
+        ],
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Randomizing turn order")
+    {:ok, Directive.new(phase: :pregame_setup), state}
+  end
+
+  @impl true
+  def handle_step(
+        [
+          %Directive{op: {:phase, :roll}},
+          %Directive{op: {:phase, :choose_turn_order}}
+        ],
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Rolling for initiative")
+    {:ok, Directive.new(phase: :pregame_setup), state}
+  end
+
+  @impl true
+  def handle_step(
+        [
+          %Directive{op: {:phase, :pregame_setup}}
+        ] = stack,
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Starting setup phase")
+    {:ok, [Directive.new(phase: :round_1) | stack], state}
+  end
+
+  @impl true
+  def handle_step(
+        [
+          %Directive{op: {:phase, :round_1}},
+          %Directive{op: {:phase, :pregame_setup}}
+        ] = stack,
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Round 1 of placements")
+    {:ok, [Directive.new(phase: :place_settlement) | stack], state}
+  end
+
+  @impl true
+  def handle_step(
+        [
+          %Directive{op: {:phase, :place_settlement}},
+          %Directive{op: {:phase, :round_1}},
+          %Directive{op: {:phase, :pregame_setup}}
+        ] = stack,
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Awaiting settlement placement")
+    {:ok, [Directive.new(phase: :place_road) | tl(stack)], state}
+  end
+
+  @impl true
+  def handle_step(
+        [
+          %Directive{op: {:phase, :place_road}},
+          %Directive{op: {:phase, :round_1}},
+          %Directive{op: {:phase, :pregame_setup}}
+        ] = stack,
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Awaiting road placement")
+    {:ok, [Directive.new(action: :next_player) | tl(stack)], state}
+  end
+
 end
