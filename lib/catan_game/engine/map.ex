@@ -20,7 +20,7 @@ defmodule Catan.Engine.GameMap do
 
   import Integer,
     only: [
-      is_even: 1,
+      is_even: 1
       # is_odd: 1
     ]
 

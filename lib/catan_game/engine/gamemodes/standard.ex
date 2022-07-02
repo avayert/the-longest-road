@@ -169,5 +169,4 @@ defmodule Catan.Engine.GameMode.Standard do
     Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Awaiting road placement")
     {:ok, [Directive.new(action: :next_player) | tl(stack)], state}
   end
-
 end
