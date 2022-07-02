@@ -168,15 +168,16 @@ defmodule Catan.GameCoordinator do
     lobby = Map.get(state.lobbies, id)
     opts = [name: via(id, :game), lobby: lobby]
 
-    result =
+    # FIXME: I guess this makes the whole thing a cyclic reference but I _need_ the PID to be accessible somehow, come up with a sane solution later
+    result  = {_, pid} =
       DynamicSupervisor.start_child(
         GameManager,
         {Catan.Game, opts}
       )
       |> case do
-        {:ok, _pid} ->
+        {:ok, _pid} = result ->
           Logger.info("[GC] Started game: #{id}")
-          {:ok, id}
+          result
 
         {:error, :no_lobby} = result ->
           Logger.error("[GC] Lobby does not exist: #{id}")
@@ -196,6 +197,7 @@ defmodule Catan.GameCoordinator do
       end
 
     state = put_in(state, [:lobbies, id, :game_started], true)
+    state = put_in(state, [:lobbies, id, :game_pid], pid)
 
     {result, state}
   end
@@ -235,7 +237,7 @@ defmodule Catan.GameCoordinator do
 
   # Games
 
-  @spec start_game(id :: String.t()) :: :ok | {:error, atom()}
+  @spec start_game(id :: String.t()) :: {:ok, pid()} | {:error, atom()}
   def start_game(id) do
     GenServer.call(__MODULE__, {:start_game, id})
   end

@@ -40,7 +40,9 @@
 
 .lobbyitem button {
     /* This is some default nonsense I'm too scared to touch in the other file */
-    margin: 0;
+    margin: 0 1em;
+}
 
+.lobbyitem button:first-child {
     margin-left: auto;
 }

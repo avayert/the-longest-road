@@ -36,7 +36,7 @@ defmodule CatanWeb.Router do
 
     # get "/", PageController, :index
     live "/", MainLive, :index
-    get "/:id", RedirectController, :route_id
+    live "/:id", GameLive
 
     # we need /catan, //lobby, //watch, //game/:id
     # if we're not doing the subdomain that is

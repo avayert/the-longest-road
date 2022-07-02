@@ -37,6 +37,12 @@ defmodule CatanWeb.MainLive do
   end
 
   @impl true
+  def handle_event("start_game", %{"id" => id}, socket) do
+    {:ok, game_pid} = GC.start_game(id)
+    {:noreply, socket |> assign(:game, game_pid) |> redirect(to: "/#{id}")}
+  end
+
+  @impl true
   def handle_info({:new_lobby, _id, _lobby}, socket) do
     {:noreply, socket |> assign(:lobbies, GC.get_lobbies())}
   end

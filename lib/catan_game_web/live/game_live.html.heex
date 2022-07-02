@@ -1,0 +1,11 @@
+<p>This is the game with ID <%= @id %> </p>
+
+<.form let={f} for={:asdf} phx-submit="player_input">
+    <%= label f, :text %>
+    <%= text_input f, :text %>
+
+    <%= label f, :select %>
+    <%= select f, :select, 1..10 %>
+
+    <%= submit "Send" %>
+</.form>

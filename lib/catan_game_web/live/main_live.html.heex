@@ -9,7 +9,7 @@
     <% end %>
     <%= for lobby <- @lobbies do %>
         <div class="lobbyitem">
-            <%= lobby.lobby_name %> - <%= lobby.id %> <button phx-click="delete_lobby" phx-value-id={lobby.id}>X</button>
+            <%= lobby.lobby_name %> - <%= lobby.id %> <button phx-click="delete_lobby" phx-value-id={lobby.id}>X</button> <button phx-click="start_game" phx-value-id={lobby.id}>></button>
         </div>
     <% end %>
 </div>
