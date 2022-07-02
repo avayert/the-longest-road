@@ -81,6 +81,8 @@ defmodule Catan.GameCoordinator do
 
     state = %State{state | lobbies: lobby_list}
 
+    Phoenix.PubSub.broadcast!(Catan.PubSub, "gc:lobbies", {:new_lobby, id, lobby})
+
     # TODO: move lobby state to an agent or something
     #       so it doesnt die if the gc does
 
@@ -93,8 +95,17 @@ defmodule Catan.GameCoordinator do
 
     # TODO: {:reply, :game_already_started, state}
     case got do
-      nil -> {:reply, :noop, state}
-      _ -> {:reply, :ok, state}
+      nil ->
+        {:reply, :noop, state}
+
+      _ ->
+        Phoenix.PubSub.broadcast!(
+          Catan.PubSub,
+          "gc:lobbies",
+          {:delete_lobby, id}
+        )
+
+        {:reply, :ok, state}
     end
   end
 
@@ -121,8 +132,17 @@ defmodule Catan.GameCoordinator do
   def handle_call({:start_game, id}, _from, state) do
     {result, state} =
       case Map.get(state.lobbies, id) do
-        nil -> {{:error, :no_lobby}, state}
-        _lobby -> start_game(id, state)
+        nil ->
+          {{:error, :no_lobby}, state}
+
+        _lobby ->
+          Phoenix.PubSub.broadcast!(
+            Catan.PubSub,
+            "gc:lobbies",
+            {:start_game, id}
+          )
+
+          start_game(id, state)
       end
 
     {:reply, result, state}

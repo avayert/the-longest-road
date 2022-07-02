@@ -2,3 +2,11 @@ I have no idea what im doing
 <br>
 please god ava help
 <!-- <marquee>aaaaaaaaaaaaaaaaaaaaaaa</marquee> -->
+
+<hr>
+
+<%= for lobby <- @lobbies do %>
+    <div class="lobbyitem" style="border-style:solid;border-width:thin;border-color:#cccccc">
+        <%= lobby.lobby_name %>
+    </div>
+<% end %>
