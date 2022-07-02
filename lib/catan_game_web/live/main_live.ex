@@ -20,6 +20,13 @@ defmodule CatanWeb.MainLive do
 
   @impl true
   def handle_event("create_lobby", _params, %{assigns: %{}} = socket) do
+    GC.create_lobby()  # I feel like I should do something with this return...
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("delete_lobby", %{"id" => id}, socket) do
+    GC.delete_lobby(id)
     {:noreply, socket}
   end
 

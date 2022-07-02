@@ -1,11 +1,14 @@
-I have no idea what im doing
-<br>
-please god ava help
-
-<hr>
-
-<%= for lobby <- @lobbies do %>
-    <div class="lobbyitem" style="border-style:solid;border-width:thin;border-color:#cccccc">
-        <%= lobby.lobby_name %> - <%= lobby.id %>
-    </div>
-<% end %>
+<header>
+    <h1>Lobbies:</h1>
+    <button phx-click="create_lobby">Create new</button>
+</header>
+<div id="lobbies">
+    <%= if Enum.empty?(@lobbies) do %>
+        <div class="admonition info">This list is a stub. You can help by <a phx-click="create_lobby" href="#">expanding it</a></div>
+    <% end %>
+    <%= for lobby <- @lobbies do %>
+        <div class="lobbyitem">
+            <%= lobby.lobby_name %> - <%= lobby.id %> <button phx-click="delete_lobby" phx-value-id={lobby.id}>X</button>
+        </div>
+    <% end %>
+</div>

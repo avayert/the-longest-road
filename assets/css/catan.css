@@ -1,0 +1,46 @@
+/* TODO: decide on a colour scheme */
+:root {
+    --background: #FFFFFF;
+    --light: #EEEEEE;
+    --medium: #BFBFBF;
+    --dark: #808080;
+}
+
+#lobbies {
+    display: flex;
+    flex-direction: column;
+
+    background: var(--light);
+    padding: 1em 2em;
+}
+
+.admonition {
+    background-color: var(--background);
+    border: 2px solid var(--medium);
+
+    padding: 1em 0.75em;
+
+    /* This is a hack since CSS borders are mitered */
+    box-shadow: -10px 0 0 0 var(--box-shadow, green);
+    /* Add margin purely for the box-shadow */
+    margin-left: 10px;
+    /* Remove border from the left */
+    border-left-width: 0;
+}
+
+.info {
+    --box-shadow: blue;
+}
+
+.lobbyitem {
+    display: flex;
+    align-items: center;
+    margin: 5px 10px;
+}
+
+.lobbyitem button {
+    /* This is some default nonsense I'm too scared to touch in the other file */
+    margin: 0;
+
+    margin-left: auto;
+}
