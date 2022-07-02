@@ -1,6 +1,7 @@
 <header>
     <h1>Lobbies:</h1>
     <button phx-click="create_lobby">Create new</button>
+    <button style="background-color: red" phx-click="delete_all">Delete all</button>
 </header>
 <div id="lobbies">
     <%= if Enum.empty?(@lobbies) do %>

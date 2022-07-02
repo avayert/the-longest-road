@@ -31,6 +31,12 @@ defmodule CatanWeb.MainLive do
   end
 
   @impl true
+  def handle_event("delete_all", _params, socket) do
+    GC.get_lobbies() |> Enum.map(&GC.delete_lobby(&1.id))
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info({:new_lobby, _id, _lobby}, socket) do
     {:noreply, socket |> assign(:lobbies, GC.get_lobbies())}
   end
