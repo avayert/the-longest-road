@@ -65,7 +65,12 @@ config :catan_game, CatanWeb.Endpoint,
   ]
 
 # Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n"
+config :logger, :console,
+  format: "[$level] $message\n",
+  # format: "[$level] $message\n~> $metadata\n\n",
+  sync_threshold: 0
+
+# metadata: [:request_id, :file, :line, :function, :module]
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
