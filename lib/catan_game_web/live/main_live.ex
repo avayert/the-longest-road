@@ -20,7 +20,9 @@ defmodule CatanWeb.MainLive do
 
   @impl true
   def handle_event("create_lobby", _params, %{assigns: %{}} = socket) do
-    GC.create_lobby()  # I feel like I should do something with this return...
+    # I feel like I should do something with this return...
+    GC.create_lobby()
+    # TODO: move into lobby
     {:noreply, socket}
   end
 
@@ -38,8 +40,21 @@ defmodule CatanWeb.MainLive do
 
   @impl true
   def handle_event("start_game", %{"id" => id}, socket) do
-    {:ok, game_pid} = GC.start_game(id)
-    {:noreply, socket |> assign(:game, game_pid) |> redirect(to: "/#{id}")}
+    socket =
+      case GC.start_game(id) do
+        {:ok, _} ->
+          socket |> assign(:game_id, id) |> redirect(to: "/#{id}")
+
+        {:error, {:already_started, _pid}} ->
+          socket |> assign(:game_id, id) |> redirect(to: "/#{id}")
+
+        {:error, reason} ->
+          socket
+          |> put_flash(:error, "Error starting game #{id}, #{inspect(reason)}.")
+          |> push_redirect(to: "/")
+      end
+
+    {:noreply, socket}
   end
 
   @impl true

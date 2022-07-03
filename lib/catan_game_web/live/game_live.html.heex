@@ -1,6 +1,6 @@
-<p>This is the game with ID <%= @id %> </p>
+<p>This is the game with ID <%= @game_id %> </p>
 
-<.form let={f} for={:asdf} phx-submit="player_input">
+<.form let={f} for={:test_inputs} phx-submit="player_input">
     <%= label f, :text %>
     <%= text_input f, :text %>
 
@@ -9,3 +9,7 @@
 
     <%= submit "Send" %>
 </.form>
+
+<br>
+
+<a href="/">Home</a>

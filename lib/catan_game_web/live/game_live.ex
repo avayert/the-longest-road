@@ -7,16 +7,46 @@ defmodule CatanWeb.GameLive do
 
   @impl true
   def mount(%{"id" => id} = _params, _session, socket) do
-    if GC.lobby_exists?(id) do
-      {:ok, socket |> assign(:id, id) |> assign(:game, GC.get_lobby(id).game_pid )}  # this ought to be get_game I guess
-    else
-      {:ok, socket |> put_flash(:error, "No lobby with ID #{id} found.") |> redirect(to: "/")}
+    socket =
+      if GC.lobby_exists?(id) do
+        socket
+        |> assign(:game_id, id)
+      else
+        socket
+        |> put_flash(:error, "No lobby with ID #{id} found.")
+        |> push_redirect(to: "/")
+      end
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Catan.PubSub, "gc:lobbies")
     end
+
+    {:ok, socket}
   end
 
   @impl true
-  def handle_event("player_input", params, %{assigns: %{game: game}} = socket) do  # I imagine I'm not supposed to be reaching into the assigns like this
-    GenServer.cast(game, {:player_input, params})
+  def handle_event("player_input", params, %{assigns: %{game_id: game_id}} = socket) do
+    Phoenix.PubSub.broadcast!(Catan.PubSub, "game:#{game_id}", {:player_input, params})
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:delete_lobby, id}, socket) do
+    socket =
+      if socket.assigns.game_id == id do
+        socket
+        |> put_flash(:error, "Lobby #{id} destroyed")
+        |> push_redirect(to: "/")
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(thing, socket) do
+    Logger.debug("#{__MODULE__} not handling #{inspect(thing)}")
     {:noreply, socket}
   end
 end
