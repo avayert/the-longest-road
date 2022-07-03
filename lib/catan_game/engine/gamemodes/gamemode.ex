@@ -3,6 +3,8 @@ defmodule Catan.Engine.GameMode do
 
   alias Catan.Engine.Directive
 
+  # Types
+
   @type stack :: Directive.stack()
   @type game_state :: Catan.Game.GameState.t()
   @type mode_state :: struct()
@@ -11,6 +13,23 @@ defmodule Catan.Engine.GameMode do
           | {:error, term()}
           | {:game_complete, game_state()}
           | :not_implemented
+
+  @typedoc """
+  An option setting looks like this:
+
+  `{:option, name, display_name, type, values, default}`
+
+  An option setting removed by a gamemode looks like this:
+
+  `{:discard, name}`
+  """
+  @type lobby_setting_option ::
+          {:option, atom(), String.t(), :range, Range.t() | [...], any()}
+          | {:option, atom(), String.t(), :toggle, any(), boolean()}
+          | {:option, atom(), String.t(), :select, [any()], any()}
+          | {:discard, atom()}
+
+  # Callbacks
 
   @callback init(game_state :: game_state()) ::
               {:ok, Directive.t() | nil, mode_state()}
@@ -32,9 +51,12 @@ defmodule Catan.Engine.GameMode do
               state :: game_state()
             ) :: dispatch_result()
 
+  @callback lobby_settings() :: list(lobby_setting_option())
+
   @optional_callbacks [
     handle_step: 2,
-    handle_step: 4
+    handle_step: 4,
+    lobby_settings: 0
   ]
 
   defmacro __using__(opts) do
@@ -76,8 +98,12 @@ defmodule Catan.Engine.GameMode do
         :not_implemented
       end
 
+      @impl true
+      def lobby_settings(), do: []
+
       defoverridable dispatch: 2,
-                     handle_step: 2
+                     handle_step: 2,
+                     lobby_settings: 0
     end
   end
 end

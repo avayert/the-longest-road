@@ -8,6 +8,8 @@ defmodule Catan.Game do
 
   require Logger
 
+  alias Catan.LobbyOption
+
   alias Catan.Engine.Directive
   require Directive
 
@@ -119,6 +121,24 @@ defmodule Catan.Game do
   #   end
   # end
 
+  defp default_lobby_options do
+    [
+      LobbyOption.new(
+        name: :private_game,
+        display_name: "Private game",
+        type: :toggle,
+        default: false
+      ),
+      LobbyOption.new(
+        name: :game_speed,
+        display_name: "Game speed",
+        type: :select,
+        values: [:slow, :fast],
+        default: :fast
+      )
+    ]
+  end
+
   def send_pubsub(state, data) do
     Phoenix.PubSub.broadcast!(Catan.PubSub, "game:#{state.lobby.id}", data)
     state
@@ -129,6 +149,13 @@ defmodule Catan.Game do
   end
 
   ## Actual functions
+
+  @spec get_lobby_settings(state :: GameState.t()) :: [
+          Catan.Engine.GameMode.lobby_setting_option()
+        ]
+  def get_lobby_settings(_state) do
+    default_lobby_options()
+  end
 
   @spec step_game(state :: game_state()) :: step_result()
   def step_game(state) do
@@ -167,10 +194,11 @@ defmodule Catan.Game do
               "Resolved, game step done"
           )
 
-          Logger.info(
-            "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-              "Got new directives: #{inspect(new_directives, pretty: true)}"
-          )
+          # Logger.info(
+          #   "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+          #     "Got new directives: #{inspect(new_directives, pretty: true)}"
+          # )
+          Logger.info("[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] Got new directives")
 
           new_state = put_directives(new_state, new_directives)
           {:ok, new_directives, new_state}
@@ -249,7 +277,11 @@ defmodule Catan.Game do
       |> List.first()
       |> get_in([:choices])
 
-    Logger.info("Sending #{inspect(choices)}")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Sending #{inspect(choices)}"
+    )
+
     send_pubsub_choices(state, choices)
 
     {:noreply, state}
@@ -280,23 +312,25 @@ defmodule Catan.Game do
       [%Directive{op: {:action, _}} | _] ->
         {:noreply, state, {:continue, :action}}
 
-      [%Directive{op: {:phase, _}, choices: [_ | _]} | _] = cur_dirs ->
+      [%Directive{op: {:phase, _}, choices: [_]} | _] ->
+        # Single choice phase, just go to next directive
+        {:noreply, state, {:continue, :choices}}
+
+      [%Directive{op: {:phase, _}, choices: [_ | _] = choices} | _] ->
+        # Multiple choices, gotta wait for input
         Logger.info(
           "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-            "Got phase choices #{inspect(cur_dirs)}"
+            "Got phase choices #{inspect(choices)}"
         )
 
         {:noreply, state, {:continue, :choices}}
 
-      # TODO: check for phase with no choices
-
-      [%Directive{op: {:phase, _}} | _] = cur_dirs ->
-        Logger.info(
-          "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-            "End of the line for #{inspect(cur_dirs)}"
-        )
-
-        {:noreply, state}
+      # [%Directive{op: {:phase, _}} | _] = cur_dirs ->
+      #   Logger.info(
+      #     "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+      #       "End of the line for #{inspect(cur_dirs)}"
+      #   )
+      #   {:noreply, state}
 
       [%Directive{op: {:game_error, error}} | _] ->
         Logger.error(
@@ -333,10 +367,9 @@ defmodule Catan.Game do
   def terminate(reason, state) do
     Logger.warning(
       "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-        "Game process #{inspect(self())} (id #{state.lobby.id}) is going down, " <>
-        "reason: #{reason}, "
-      # <>
-      # "last known state:\n#{inspect(state, pretty: true)}"
+        "Game process #{inspect(self())} (id #{state.lobby.id}) is going down" <>
+        ", reason: #{reason}, "
+      # <> ", last known state:\n#{inspect(state, pretty: true)}"
     )
 
     # Logger.error("Stacktrace:\n" <> Exception.format_stacktrace(elem(reason, 1)))
@@ -359,8 +392,15 @@ defmodule Catan.Game do
   end
 
   @impl true
+  def handle_info({:choices, _}, state), do: {:noreply, state}
+
+  @impl true
   def handle_info(stuff, state) do
-    Logger.info("Unhandled info event with data: #{inspect(stuff, pretty: true)}")
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Unhandled info event with data:\n#{inspect(stuff, pretty: true)}"
+    )
+
     {:noreply, state}
   end
 

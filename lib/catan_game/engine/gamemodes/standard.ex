@@ -3,6 +3,8 @@ defmodule Catan.Engine.GameMode.Standard do
   require Logger
 
   import GameMode.Helpers
+
+  alias Catan.LobbyOption
   alias Catan.Engine.Directive
   require Directive
 
@@ -62,9 +64,48 @@ defmodule Catan.Engine.GameMode.Standard do
   end
 
   @impl true
+  def lobby_settings() do
+    [
+      LobbyOption.new(
+        name: :win_vp,
+        display_name: "VP to Win",
+        type: :range,
+        values: 3..20,
+        default: 10
+      ),
+      LobbyOption.new(
+        name: :max_players,
+        display_name: "Max Players",
+        type: :range,
+        values: 1..4,
+        default: 4
+      ),
+      LobbyOption.new(
+        name: :hand_limit,
+        display_name: "Card Discard Limit",
+        type: :range,
+        values: 2..99,
+        default: 7
+      )
+    ]
+  end
+
+  @impl true
   def init(state) do
     modestate = ModeState.new(state)
     {:ok, Directive.new(action: :generate_board), modestate}
+
+    # Uncomment this when we actually have a lobby to test stuff with
+    # {:ok, Directive.new(phase: :pregame_lobby), modestate}
+  end
+
+  @impl true
+  def handle_step(
+        [%Directive{op: {:phase, :pregame_lobby}}],
+        state
+      ) do
+    Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Waiting for lobby")
+    {:ok, Directive.new(action: :generate_board), state}
   end
 
   @impl true
@@ -106,7 +147,7 @@ defmodule Catan.Engine.GameMode.Standard do
         state
       ) do
     Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Randomizing turn order")
-    {:ok, Directive.new(phase: :pregame_setup), state}
+    {:ok, Directive.new(phase: :initial_placements), state}
   end
 
   @impl true
@@ -118,13 +159,13 @@ defmodule Catan.Engine.GameMode.Standard do
         state
       ) do
     Logger.info("[#{l_mod(2)}.#{l_fn()}:#{l_ln()}] Rolling for initiative")
-    {:ok, Directive.new(phase: :pregame_setup), state}
+    {:ok, Directive.new(phase: :initial_placements), state}
   end
 
   @impl true
   def handle_step(
         [
-          %Directive{op: {:phase, :pregame_setup}}
+          %Directive{op: {:phase, :initial_placements}}
         ] = stack,
         state
       ) do
@@ -136,7 +177,7 @@ defmodule Catan.Engine.GameMode.Standard do
   def handle_step(
         [
           %Directive{op: {:phase, :round_1}},
-          %Directive{op: {:phase, :pregame_setup}}
+          %Directive{op: {:phase, :initial_placements}}
         ] = stack,
         state
       ) do
@@ -149,7 +190,7 @@ defmodule Catan.Engine.GameMode.Standard do
         [
           %Directive{op: {:phase, :place_settlement}},
           %Directive{op: {:phase, :round_1}},
-          %Directive{op: {:phase, :pregame_setup}}
+          %Directive{op: {:phase, :initial_placements}}
         ] = stack,
         state
       ) do
@@ -162,7 +203,7 @@ defmodule Catan.Engine.GameMode.Standard do
         [
           %Directive{op: {:phase, :place_road}},
           %Directive{op: {:phase, :round_1}},
-          %Directive{op: {:phase, :pregame_setup}}
+          %Directive{op: {:phase, :initial_placements}}
         ] = stack,
         state
       ) do
