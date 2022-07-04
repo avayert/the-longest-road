@@ -5,9 +5,8 @@ defmodule Catan.Engine do
     use TypedStruct
 
     typedstruct do
-      field :name, String.t()
-      field :color, integer()
-      field :hand, list()
+      field :name, String.t(), enforce: true
+      # field :color, integer()
     end
   end
 end

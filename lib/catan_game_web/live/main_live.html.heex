@@ -3,6 +3,7 @@
     <button phx-click="create_lobby">Create new</button>
     <button style="background-color: red" phx-click="delete_all">Delete all</button>
 </header>
+<p>Hello <%= @player_profile.name %> </p>
 <div id="lobbies">
     <%= if Enum.empty?(@lobbies) do %>
         <div class="admonition info">This list is a stub. You can help by <a phx-click="create_lobby" href="#">expanding it</a></div>

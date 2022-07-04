@@ -1,6 +1,8 @@
 defmodule CatanWeb.Router do
   use CatanWeb, :router
 
+  alias CatanWeb.Plugs
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,6 +10,10 @@ defmodule CatanWeb.Router do
     plug :put_root_layout, {CatanWeb.LayoutView, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+  end
+
+  pipeline :userfacing do
+    plug Plugs.PlayerSessionPlug
   end
 
   pipeline :api do
@@ -33,10 +39,15 @@ defmodule CatanWeb.Router do
 
   scope "/", CatanWeb do
     pipe_through :browser
+    pipe_through :userfacing
 
-    # get "/", PageController, :index
-    live "/", MainLive, :index
-    live "/:id", GameLive
+    # https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.Router.html#live_session/3
+    live_session :mainmenu do
+      live "/", MainLive, :index
+      live "/:id", GameLive
+    end
+    # live "/", MainLive, :index
+    # live "/:id", GameLive
 
     # we need /catan, //lobby, //watch, //game/:id
     # if we're not doing the subdomain that is

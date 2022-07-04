@@ -6,14 +6,17 @@ defmodule CatanWeb.MainLive do
   alias Catan.GameCoordinator, as: GC
 
   @impl true
-  def mount(_params, _session, socket) do
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(Catan.PubSub, "gc:lobbies")
-    end
-
+  def mount(_params, session, socket) do
     socket =
-      socket
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(Catan.PubSub, "gc:lobbies")
+        socket
+      else
+        socket
+        # initial connect, pre ws connection
+      end
       |> assign(:lobbies, GC.get_lobbies())
+      |> assign_new(:player_profile, fn -> session["player_profile"] end)
 
     {:ok, socket}
   end
