@@ -15,7 +15,7 @@ defmodule CatanWeb.Plugs.PlayerSessionPlug do
   def load_player_data(conn) do
     data =
       case conn.cookies do
-        %{@cookie_name => data} -> data
+        %{@cookie_name => data} -> refresh_player(data)
         _ -> new_player()
       end
 
@@ -27,9 +27,13 @@ defmodule CatanWeb.Plugs.PlayerSessionPlug do
 
   @titles ~w(Mr Ms Captain Professor Doctor Admiral Lord DJ)
 
-  defp new_player do
+  defp new_player() do
     <<l::utf8, rest::binary>> = MnemonicSlugs.generate_slug(1)
     name = Enum.random(@titles) <> " " <> String.upcase(<<l>>) <> rest
     %Catan.Engine.Player{name: name}
+  end
+
+  defp refresh_player(player) when is_struct(player, Catan.Engine.Player) do
+    struct!(Catan.Engine.Player, player |> Map.from_struct())
   end
 end

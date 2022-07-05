@@ -6,7 +6,8 @@ defmodule Catan.Engine do
 
     typedstruct do
       field :name, String.t(), enforce: true
-      # field :color, integer()
+      field :id, String.t(), default: :rand.uniform(1000000)
+      # field :color, integer(), default: 0 # do random hsv to rgb
     end
   end
 end

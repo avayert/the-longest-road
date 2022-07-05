@@ -1,4 +1,5 @@
-<p>This is the game with ID <%= @game_id %> </p>
+<p>You are playing as <%= @player_profile.name %> (id: <%=  @player_profile.id %>)</p>
+<p>Game id: <%= @game_id %></p>
 
 <.form let={f} for={:test_inputs} phx-submit="player_input">
     <%= label f, :text %>
@@ -9,7 +10,5 @@
 
     <%= submit "Send" %>
 </.form>
-
-<br>
 
 <a href="/">Home</a>

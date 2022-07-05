@@ -6,11 +6,12 @@ defmodule CatanWeb.GameLive do
   alias Catan.GameCoordinator, as: GC
 
   @impl true
-  def mount(%{"id" => id} = _params, _session, socket) do
+  def mount(%{"id" => id} = _params, session, socket) do
     socket =
       if GC.lobby_exists?(id) do
         socket
         |> assign(:game_id, id)
+        |> assign(:player_profile, session["player_profile"])
       else
         socket
         |> put_flash(:error, "No lobby with ID #{id} found.")
