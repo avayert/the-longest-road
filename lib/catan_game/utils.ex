@@ -1,8 +1,15 @@
 defmodule Catan.Utils do
   @moduledoc false
 
-  @spec update_map(map :: map(), options :: keyword()) :: map()
+  @spec update_map(struct :: struct(), options :: keyword()) :: struct()
   @doc "Updates a map or struct with options from a keyword list"
+  def update_map(struct, options)
+      when is_struct(struct) and (is_list(options) or is_map(options)) do
+    #
+    struct!(struct, update_map(%{}, options))
+  end
+
+  @spec update_map(map :: map(), options :: keyword()) :: map()
   def update_map(map, options)
       when is_map(map) and (is_list(options) or is_map(options)) do
     #
@@ -50,5 +57,10 @@ defmodule Catan.Utils do
        |> elem(1)
        |> Enum.drop(drop)
        |> Exception.format_stacktrace())
+  end
+
+  @spec unwrap({atom(), any()}) :: any()
+  def unwrap({op, other}) when is_atom(op) do
+    other
   end
 end

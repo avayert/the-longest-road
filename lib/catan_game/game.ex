@@ -8,8 +8,8 @@ defmodule Catan.Game do
 
   require Logger
 
+  alias Catan.PubSub.Topics
   alias Catan.LobbyOption
-
   alias Catan.Engine.Directive
   require Directive
 
@@ -79,8 +79,7 @@ defmodule Catan.Game do
       |> Map.put(:mode_states, mode_states)
       |> Map.update!(:game_directives, fn cur -> [directive | cur] end)
 
-    # :ok = CatanWeb.Endpoint.subscribe("game:#{state.lobby.id}")
-    :ok = Phoenix.PubSub.subscribe(Catan.PubSub, "game:#{state.lobby.id}")
+    Phoenix.PubSub.subscribe(Catan.PubSub, Topics.game(state.lobby.id))
     {:ok, state, {:continue, :init}}
   end
 
@@ -121,26 +120,8 @@ defmodule Catan.Game do
   #   end
   # end
 
-  defp default_lobby_options do
-    [
-      LobbyOption.new(
-        name: :private_game,
-        display_name: "Private game",
-        type: :toggle,
-        default: false
-      ),
-      LobbyOption.new(
-        name: :game_speed,
-        display_name: "Game speed",
-        type: :select,
-        values: [:slow, :fast],
-        default: :fast
-      )
-    ]
-  end
-
   def send_pubsub(state, data) do
-    Phoenix.PubSub.broadcast!(Catan.PubSub, "game:#{state.lobby.id}", data)
+    Phoenix.PubSub.broadcast!(Catan.PubSub, Topics.game(state.lobby.id), data)
     state
   end
 
@@ -154,7 +135,8 @@ defmodule Catan.Game do
           Catan.Engine.GameMode.lobby_setting_option()
         ]
   def get_lobby_settings(_state) do
-    default_lobby_options()
+    # TODO: combine
+    # default_lobby_options()
   end
 
   @spec step_game(state :: game_state()) :: step_result()
@@ -285,6 +267,17 @@ defmodule Catan.Game do
     send_pubsub_choices(state, choices)
 
     {:noreply, state}
+  end
+
+  @impl true
+  def handle_continue(:init, state) do
+    # TODO: move players into game
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Pretending to move players into game #{state.lobby.id}"
+    )
+
+    {:noreply, state, {:continue, :postinit}}
   end
 
   @impl true

@@ -10,22 +10,15 @@ defmodule Catan.GameCoordinator do
 
   require Logger
 
-  alias Catan.Lobby
+  alias Catan.PubSub.Topics
+  alias Catan.Engine.Player, as: Player
 
-  defmodule State do
-    use TypedStruct
-
-    typedstruct do
-      field :lobbies, %{String.t() => Lobby.t()}, default: %{}
-    end
-
-    use Accessible
-  end
-
+  @type error_tuple :: {:error, atom()}
   @type via_tuple() :: {:via, module(), {module(), String.t()}}
+  @typep via_registries :: :lobby | :game | :map | :player
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %State{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
   @impl true
@@ -33,127 +26,179 @@ defmodule Catan.GameCoordinator do
     {:ok, state}
   end
 
-  ## Private functions
-
-  @typep via_registries :: :game | :map | :player
-
   @spec via(id :: String.t(), type :: via_registries) :: via_tuple
   def via(id, type) do
+    {:via, Registry, {get_registry(type), id}}
+  end
+
+  # Private functions
+
+  defp get_registry(type) do
     case type do
-      :game -> {:via, Registry, {GameRegistry, id}}
-      :map -> {:via, Registry, {MapRegistry, id}}
-      :player -> {:via, Registry, {PlayerRegistry, id}}
+      :lobby -> LobbyRegistry
+      :game -> GameRegistry
+      :map -> MapRegistry
+      :player -> PlayerRegistry
     end
   end
 
   defp unique_id?(id, type) do
-    {_, _, {where, _}} = via(id, type)
-
-    Registry.lookup(where, id)
+    get_registry(type)
+    |> Registry.lookup(id)
     |> Enum.empty?()
   end
 
-  defp new_id(type) do
-    id = Catan.Utils.random_id()
-
-    if unique_id?(id, type) do
-      id
-    else
-      new_id(type)
-    end
+  defp exists?(id, type) do
+    not unique_id?(id, type)
   end
 
-  ## Testing stuff
+  defp new_id(type) do
+    new_id(type, nil, false)
+  end
 
-  ## PubSub callbacks
+  defp new_id(type, _id, false) do
+    id = Catan.Utils.random_id()
+    new_id(type, id, unique_id?(id, type))
+  end
 
-  ## GenServer callbacks
-  # Lobbies
+  defp new_id(_type, id, true) do
+    id
+  end
+
+  defp get_all_ids(type) do
+    get_registry(type)
+    |> Registry.select([{{:"$1", :_, :_}, [], [:"$1"]}])
+  end
+
+  # Testing stuff
+
+  # PubSub callbacks
+
+  # GenServer callbacks
+  ## Generic
 
   @impl true
-  def handle_call({:create_lobby}, _from, state) do
-    id = new_id(:game)
-    lobby = Lobby.new(id)
-
-    lobby_list =
-      state.lobbies
-      |> Map.put(id, lobby)
-
-    state = %State{state | lobbies: lobby_list}
-
-    Phoenix.PubSub.broadcast!(Catan.PubSub, "gc:lobbies", {:new_lobby, id, lobby})
-
-    # TODO: move lobby state to an agent or something
-    #       so it doesnt die if the gc does
-
-    {:reply, {id, lobby}, state}
+  def handle_call({:exists, id, type}, _from, state) do
+    {:reply, exists?(id, type), state}
   end
+
+  ## Lobbies
+
+  ### create_lobby(player \\ nil)
+
+  @impl true
+  def handle_call({:create_lobby, player}, _from, state)
+      when is_struct(player, Player) or is_nil(player) do
+    #
+    id = new_id(:lobby)
+
+    # TODO: deuglyfy
+    opts =
+      [name: via(id, :lobby), id: id] ++
+        if player != nil, do: [players: [player]], else: []
+
+    result =
+      DynamicSupervisor.start_child(
+        LobbyManager,
+        {Catan.Lobby, opts}
+      )
+      |> case do
+        {:ok, _pid} ->
+          Logger.info("[GC] Started lobby: #{id}")
+          {:ok, id}
+
+        {:error, {_, stack}} = result when is_list(stack) ->
+          Logger.error("[GC] Error starting lobby:\n#{Exception.format_stacktrace(stack)}")
+          result
+
+        {:error, err} = result ->
+          Logger.error("[GC] Error starting lobby:\n#{inspect(err)}")
+          result
+      end
+
+    Phoenix.PubSub.broadcast!(Catan.PubSub, Topics.lobbies(), {:new_lobby, id})
+
+    {:reply, result, state}
+  end
+
+  ### delete_lobby(id)
 
   @impl true
   def handle_call({:delete_lobby, id}, _from, state) do
-    {got, state} = pop_in(state, [:lobbies, id])
+    result =
+      if exists?(id, :lobby) do
+        GenServer.call(via(id, :lobby), :stop)
 
-    # TODO: {:reply, :game_already_started, state}
-    case got do
-      nil ->
-        {:reply, :noop, state}
-
-      _ ->
         Phoenix.PubSub.broadcast!(
           Catan.PubSub,
-          "gc:lobbies",
+          Topics.lobbies(),
           {:delete_lobby, id}
         )
 
-        {:reply, :ok, state}
-    end
-  end
-
-  @impl true
-  def handle_call({:get_lobby, id}, _from, state) do
-    {:reply, Map.get(state.lobbies, id), state}
-  end
-
-  @impl true
-  def handle_call({:get_lobbies}, _from, state) do
-    {:reply, Map.values(state.lobbies), state}
-  end
-
-  @impl true
-  def handle_call({:does_lobby_exist, id}, _from, state) do
-    Map.fetch(state.lobbies, id)
-    |> case do
-      {:ok, %{}} -> {:reply, true, state}
-      :error -> {:reply, false, state}
-    end
-  end
-
-  @impl true
-  def handle_call({:start_game, id}, _from, state) do
-    {result, state} =
-      case Map.get(state.lobbies, id) do
-        nil ->
-          {{:error, :no_lobby}, state}
-
-        _lobby ->
-          Phoenix.PubSub.broadcast!(
-            Catan.PubSub,
-            "gc:lobbies",
-            {:start_game, id}
-          )
-
-          start_game(id, state)
+        :ok
+      else
+        {:error, :no_lobby}
       end
 
     {:reply, result, state}
   end
 
+  ### get_all_lobbies()
+
   @impl true
-  def handle_call({:kill_game, id}, _from, state) do
-    res = GenServer.stop(via(id, :game), :shutdown)
-    # TODO: remove lobby or reset lobby?
-    {:reply, res, state}
+  def handle_call({:get_all_lobbies}, _from, state) do
+    {:reply, get_all_ids(:lobby), state}
   end
+
+  ### get_lobby_info(id)
+  # TODO: maybe lobby info cache process
+
+  @impl true
+  def handle_call({:get_lobby_info, :all}, _from, state) do
+    results =
+      for id <- get_all_ids(:lobby) do
+        Task.async(fn ->
+          GenServer.call(via(id, :lobby), {:get_lobby_info})
+        end)
+      end
+      |> Task.await_many()
+
+    {:reply, {:ok, results}, state}
+  end
+
+  @impl true
+  def handle_call({:get_lobby_info, id}, _from, state) do
+    info = GenServer.call(via(id, :lobby), {:get_lobby_info})
+    # TODO: handle bad id
+    {:reply, {:ok, info}, state}
+  end
+
+  # Games
+
+  ### start_game(lobby_id)
+
+  @impl true
+  def handle_call({:start_game, id}, _from, state) do
+    result =
+      if exists?(id, :lobby) do
+        start_game_(id, state)
+      else
+        {:error, :no_lobby}
+      end
+
+    {:reply, result, state}
+  end
+
+  ### delete_game(id)
+
+  @impl true
+  def handle_call({:delete_game, id}, _from, state) do
+    result = GenServer.stop(via(id, :game), :normal)
+    # TODO: remove lobby or reset lobby?
+    {:reply, result, state}
+  end
+
+  ### get_all_games()
 
   @impl true
   def handle_call({:get_all_games}, _from, state) do
@@ -162,94 +207,122 @@ defmodule Catan.GameCoordinator do
     {:reply, {:ok, ids}, state}
   end
 
+  ### unfinished player functions
+
+  @impl true
+  def handle_call({:register_player, _player}, _from, state) do
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:get_player, _id}, _from, state) do
+    {:reply, :ok, state}
+  end
+
   ## Impl functions
 
-  defp start_game(id, state) do
-    lobby = Map.get(state.lobbies, id)
+  defp start_game_(id, _state) do
+    lobby = GenServer.call(via(id, :lobby), {:starting})
     opts = [name: via(id, :game), lobby: lobby]
 
-    # FIXME: I guess this makes the whole thing a cyclic reference but I _need_ the PID to be accessible somehow, come up with a sane solution later
-    result  = {_, pid} =
+    result =
       DynamicSupervisor.start_child(
         GameManager,
         {Catan.Game, opts}
       )
       |> case do
-        {:ok, _pid} = result ->
-          Logger.info("[GC] Started game: #{id}")
-          result
+        {:ok, _pid} ->
+          Logger.info("[GC] Starting game: #{id}")
 
-        {:error, :no_lobby} = result ->
-          Logger.error("[GC] Lobby does not exist: #{id}")
-          result
+          Phoenix.PubSub.broadcast!(
+            Catan.PubSub,
+            Topics.lobbies(),
+            {:start_game, id}
+          )
+
+          {:ok, id}
 
         {:error, {:already_started, _pid}} = result ->
           Logger.error("[GC] Game already started: #{id}")
           result
 
         {:error, {_, stack}} = result when is_list(stack) ->
-          Logger.error("[GC] error\n#{Exception.format_stacktrace(stack)}")
+          Logger.error("[GC] Error starting game:\n#{Exception.format_stacktrace(stack)}")
           result
 
         {:error, err} = result ->
-          Logger.error("[GC] error\n#{inspect(err)}")
+          Logger.error("[GC] Error starting game:\n#{inspect(err)}")
           result
       end
 
-    state = put_in(state, [:lobbies, id, :game_started], true)
-    state = put_in(state, [:lobbies, id, :game_pid], pid)
-
-    {result, state}
+    result
   end
 
   ## Public API
   # Lobbies
 
-  @spec create_lobby() :: {String.t(), Lobby.t()}
-  def create_lobby() do
-    GenServer.call(__MODULE__, {:create_lobby})
+  @spec create_lobby(player :: Player.t()) ::
+          {:ok, String.t()} | error_tuple()
+  def create_lobby(player \\ nil) do
+    GenServer.call(__MODULE__, {:create_lobby, player})
   end
 
-  @spec delete_lobby(id :: String.t()) :: :ok
+  @spec delete_lobby(id :: String.t()) :: :ok | error_tuple()
   def delete_lobby(id) do
     GenServer.call(__MODULE__, {:delete_lobby, id})
   end
 
-  @spec get_lobby(id :: String.t()) :: Lobby.t() | nil
-  def get_lobby(id) do
-    GenServer.call(__MODULE__, {:get_lobby, id})
+  @spec get_all_lobbies() :: {:ok, [Catan.Lobby.t()]} | error_tuple()
+  def get_all_lobbies() do
+    GenServer.call(__MODULE__, {:get_all_lobbies})
   end
 
-  @spec get_lobbies() :: [Catan.Lobby.t()]
-  def get_lobbies() do
-    GenServer.call(__MODULE__, {:get_lobbies})
+  @spec get_lobby_info(id :: String.t() | :all) ::
+          {:ok, Catan.LobbyInfo.t() | [Catan.LobbyInfo.t()]} | error_tuple()
+  def get_lobby_info(id) do
+    GenServer.call(__MODULE__, {:get_lobby_info, id})
   end
 
   @spec lobby_exists?(id :: String.t()) :: boolean()
   def lobby_exists?(id) do
-    GenServer.call(__MODULE__, {:does_lobby_exist, id})
+    GenServer.call(__MODULE__, {:exists, id, :lobby})
   end
 
-  @spec started?(id :: String.t()) :: boolean()
-  def started?(id) do
-    GenServer.call(__MODULE__, {:is_started, id})
-  end
+  # @spec started?(id :: String.t()) :: boolean()
+  # def started?(id) do
+  #   GenServer.call(__MODULE__, {:is_started, id})
+  # end
 
   # Games
 
-  @spec start_game(id :: String.t()) :: {:ok, pid()} | {:error, atom()}
-  def start_game(id) do
-    GenServer.call(__MODULE__, {:start_game, id})
+  @spec start_game(lobby_id :: String.t()) :: :ok | error_tuple()
+  def start_game(lobby_id) do
+    GenServer.call(__MODULE__, {:start_game, lobby_id})
   end
 
-  @spec kill_game(id :: String.t()) :: :ok | {:error, atom()}
-  def kill_game(id) do
-    GenServer.call(__MODULE__, {:kill_game, id})
+  @spec delete_game(id :: String.t()) :: :ok | error_tuple()
+  def delete_game(id) do
+    GenServer.call(__MODULE__, {:delete_game, id})
   end
 
-  @spec get_all_games() :: {:ok, [] | [String.t()]} | {:error, atom()}
+  @spec get_all_games() :: {:ok, [String.t()]} | error_tuple()
   def get_all_games() do
     GenServer.call(__MODULE__, {:get_all_games})
+  end
+
+  @spec game_exists?(id :: String.t()) :: boolean()
+  def game_exists?(id) do
+    GenServer.call(__MODULE__, {:exists, id, :game})
+  end
+
+  # Players
+
+  def register_player(_player) do
+    :not_implemented
+  end
+
+  def get_player(_id) do
+    :not_implemented
   end
 
   # testing functions
@@ -265,6 +338,4 @@ end
 #   end
 #   {:reply, id, state, {:continue, :tick}}
 # end
-# defp via_tuple(id) do
-#   {:via, Registry, {GameRegistry, id}}
-# end
+########################

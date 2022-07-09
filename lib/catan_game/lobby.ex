@@ -1,48 +1,217 @@
 defmodule Catan.Lobby do
+  require Logger
+
+  alias Catan.PubSub.Topics
+
+  defmodule State do
+    use TypedStruct
+
+    alias Catan.Utils
+
+    @type game_speed :: :none | :slow | :normal | :fast | :turbo
+    # TODO: figure out a system to get times for different state directives
+
+    typedstruct do
+      field :id, String.t(), enforce: true
+
+      field :players, [any()], default: []
+      field :ready_states, %{struct() => boolean()}, default: %{}
+      field :game_started, boolean(), default: false
+
+      field :options, [Catan.LobbyOption.t()], default: []
+      field :settings, %{atom() => any()}, default: %{}
+
+      field :game_mode, module(), default: Catan.Engine.GameMode.Standard
+      field :expansion, module(), default: nil
+      field :scenarios, [module()], default: []
+
+      # TODO: map stuff
+      field :map_template, any(), default: nil
+    end
+
+    use Accessible
+
+    def new(id, opts \\ []) do
+      %__MODULE__{id: id} |> Utils.update_map(opts)
+    end
+
+    @spec set_setting(state :: t(), option :: atom(), value :: any()) :: State.t()
+    def set_setting(state, option, value) when is_atom(option) do
+      update_in(state, [:settings, option], value)
+    end
+
+    @spec get_setting(state :: t(), setting :: atom()) :: {State.t(), any()}
+    def get_setting(state, setting) do
+      Enum.find(state.options, fn {opt, _val} -> opt.name == setting end)
+    end
+
+    @spec ready?(state :: t()) :: boolean()
+    def ready?(state) do
+      Enum.all?(state.ready_states, fn {_, v} -> v end)
+    end
+  end
+
+  defdelegate get_setting(state, option), to: State
+
+  def set_setting(state, option, value) do
+    result = State.set_setting(state, option, value)
+
+    Phoenix.PubSub.broadcast!(
+      Catan.PubSub,
+      Topics.lobby(state.id),
+      {:lobby_update, state}
+    )
+
+    result
+  end
+
+  use GenServer, restart: :transient
+
+  def start_link(opts) do
+    {name, state} = Keyword.pop(opts, :name)
+    GenServer.start_link(__MODULE__, state, name: name)
+  end
+
+  def broadcast_update(%State{id: id} = _state) do
+    Phoenix.PubSub.broadcast!(
+      Catan.PubSub,
+      Topics.lobbies(),
+      {:lobby_update, id}
+    )
+  end
+
+  ## Impls
+
+  @impl true
+  def init(opts) do
+    {id, opts} = Keyword.pop!(opts, :id)
+    state = State.new(id, opts)
+
+    Phoenix.PubSub.subscribe(Catan.PubSub, Topics.lobby(id))
+    {:ok, state}
+  end
+
+  @impl true
+  def handle_call(:stop, _from, state) do
+    {:stop, :shutdown, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:get_lobby_info}, _from, state) do
+    {:reply, Catan.LobbyInfo.from_state(state), state}
+  end
+
+  @impl true
+  def handle_call({:starting}, _from, state) do
+    state = %State{state | game_started: true}
+    # do anything else needed before game start
+    {:reply, state, state, :hibernate}
+  end
+
+  @impl true
+  def handle_call({:add_player, player}, _from, state) do
+    if length(state.players) < get_setting(state, :max_players) do
+      state = update_in(state, [:players], &[player | &1])
+
+      {:reply, :ok, state}
+    else
+      {:reply, :error, :lobby_full}
+    end
+  end
+
+  @impl true
+  def handle_call({:remove_player, player_id}, _from, state) do
+    state =
+      update_in(state, [:players], fn players ->
+        Enum.reject(players, &(&1.id == player_id))
+      end)
+
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call(
+        {:set_player_state, player_id, player_state},
+        _from,
+        state
+      ) do
+    #
+    state =
+      case player_state do
+        %{ready: ready} ->
+          update_in(state.ready_states, &Map.update!(&1, player_id, ready))
+
+        # TODO: spectator, lobby leader
+
+        thing ->
+          Logger.info("Unhandled set_player_state #{inspect(thing)}")
+          state
+      end
+
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:update_settings, _whatever}, _from, state) do
+    {:reply, :nyi, state}
+  end
+end
+
+defmodule Catan.LobbyInfo do
   use TypedStruct
 
-  alias Catan.Utils
-
-  @type game_speed :: :none | :slow | :normal | :fast | :turbo
-  # TODO: figure out a system to get times for different state directives
-
-  typedstruct do
-    field :id, String.t(), enforce: true
-
-    field :players, [any()], default: []
-    field :ready_states, %{struct() => boolean()}, default: %{}
-    field :game_started, boolean(), default: false
-
-    field :lobby_name, String.t(), default: "New Lobby"
-    field :private_lobby, boolean(), default: true
-    field :game_speed, game_speed(), default: :normal
-    field :max_players, pos_integer(), default: 4
-    field :hand_limit, pos_integer(), default: 7
-    field :win_vp, pos_integer(), default: 10
-
-    field :game_mode, module(), default: Catan.Engine.GameMode.Standard
+  typedstruct enforce: true do
+    field :id, String.t()
+    field :name, String.t(), default: "placeholder"
+    field :players, non_neg_integer(), default: 0
     field :expansion, module(), default: nil
     field :scenarios, [module()], default: []
-
-    field :game_pid, pid(), default: nil
-
-    # TODO: map stuff
     field :map_template, any(), default: nil
   end
 
-  use Accessible
+  def from_state(state) do
+    fields =
+      for field <- Map.from_struct(state) do
+        case field do
+          {:id, _} -> field
+          {:players, players} -> {:players, length(players)}
+          {:expansion, _} -> field
+          {:scenarios, _} -> field
+          {:map_template, _} -> field
+          _ -> {:ignore, :ignore}
+        end
+      end
 
-  def new(id, opts \\ []) do
-    %__MODULE__{id: id} |> Utils.update_map(opts)
+    struct(__MODULE__, fields)
   end
+end
 
-  @spec set_settings(state :: t(), opts :: keyword()) :: t()
-  def set_settings(state, opts) do
-    Utils.update_map(state, opts)
-  end
+defmodule Catan.Lobby.BaseOptions do
+  alias Catan.LobbyOption
 
-  @spec ready?(state :: t()) :: boolean()
-  def ready?(state) do
-    Enum.all?(state.ready_states, fn {_, v} -> v end)
+  @game_speeds [:none, :slow, :normal, :fast, :turbo]
+
+  def options do
+    [
+      LobbyOption.new(
+        name: :lobby_name,
+        display_name: "Lobby name",
+        type: :text,
+        default: "New Lobby"
+      ),
+      LobbyOption.new(
+        name: :private_game,
+        display_name: "Private game",
+        type: :toggle,
+        default: false
+      ),
+      LobbyOption.new(
+        name: :game_speed,
+        display_name: "Game speed",
+        type: :select,
+        values: @game_speeds,
+        default: :normal
+      )
+    ]
   end
 end

@@ -44,8 +44,14 @@ defmodule CatanWeb.Router do
     # https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.Router.html#live_session/3
     live_session :mainmenu do
       live "/", MainLive, :index
-      live "/:id", GameLive
+      live "/:id", GameLive, :index
+      # idk if i need those :index options here???
     end
+
+    ###
+    ### The helper functions can be found with `mix phx.routes`
+    ###
+
     # live "/", MainLive, :index
     # live "/:id", GameLive
 

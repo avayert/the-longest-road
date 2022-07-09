@@ -3,6 +3,7 @@ defmodule CatanWeb.GameLive do
 
   require Logger
 
+  alias Catan.PubSub.Topics
   alias Catan.GameCoordinator, as: GC
 
   @impl true
@@ -19,15 +20,20 @@ defmodule CatanWeb.GameLive do
       end
 
     if connected?(socket) do
-      Phoenix.PubSub.subscribe(Catan.PubSub, "gc:lobbies")
+      Phoenix.PubSub.subscribe(Catan.PubSub, Topics.lobbies())
     end
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_event("player_input", params, %{assigns: %{game_id: game_id}} = socket) do
-    Phoenix.PubSub.broadcast!(Catan.PubSub, "game:#{game_id}", {:player_input, params})
+  def handle_event("player_input", params, %{assigns: %{game_id: id}} = socket) do
+    Phoenix.PubSub.broadcast!(
+      Catan.PubSub,
+      Topics.game(id),
+      {:player_input, params}
+    )
+
     {:noreply, socket}
   end
 

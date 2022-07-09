@@ -11,4 +11,4 @@
     <%= submit "Send" %>
 </.form>
 
-<a href="/">Home</a>
+<%= live_redirect "Home", to: Routes.main_path(@socket, :index) %>
