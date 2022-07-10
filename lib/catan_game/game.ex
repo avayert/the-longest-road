@@ -129,6 +129,12 @@ defmodule Catan.Game do
     send_pubsub(state, {:choices, choices})
   end
 
+  def get_all_options(state) do
+    map_modes(state, & &1.lobby_options())
+    |> Enum.reverse()
+    |> List.flatten()
+  end
+
   ## Actual functions
 
   @spec get_lobby_settings(state :: GameState.t()) :: [
@@ -248,6 +254,18 @@ defmodule Catan.Game do
   end
 
   @impl true
+  def handle_continue(:init, state) do
+    # TODO: move players into game
+    Logger.info(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Pretending to move players into game #{state.lobby.id}"
+    )
+
+    # {:noreply, state, {:continue, :postinit}}
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_continue(:choices, state) do
     Logger.info(
       "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
@@ -267,17 +285,6 @@ defmodule Catan.Game do
     send_pubsub_choices(state, choices)
 
     {:noreply, state}
-  end
-
-  @impl true
-  def handle_continue(:init, state) do
-    # TODO: move players into game
-    Logger.info(
-      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-        "Pretending to move players into game #{state.lobby.id}"
-    )
-
-    {:noreply, state, {:continue, :postinit}}
   end
 
   @impl true
@@ -357,11 +364,20 @@ defmodule Catan.Game do
   end
 
   @impl true
+  def terminate(:normal, state) do
+    Logger.notice(
+      "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
+        "Game process #{inspect(self())} (id #{state.lobby.id}) " <>
+        "is going down normally"
+    )
+  end
+
+  @impl true
   def terminate(reason, state) do
     Logger.warning(
       "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-        "Game process #{inspect(self())} (id #{state.lobby.id}) is going down" <>
-        ", reason: #{reason}, "
+        "Game process #{inspect(self())} (id #{state.lobby.id}) " <>
+        "is going down, reason: #{inspect(reason)}"
       # <> ", last known state:\n#{inspect(state, pretty: true)}"
     )
 
@@ -397,9 +413,21 @@ defmodule Catan.Game do
     {:noreply, state}
   end
 
+  @impl true
+  def handle_call(:get_mode_options, _from, state) do
+    result = get_all_options(state)
+    {:reply, result, state}
+  end
+
   #####
 
+  def get_mode_options(id) do
+    GenServer.call(Catan.GameCoordinator.via(id, :game), :get_mode_options)
+  end
+
+  # Testing functions
+
   def test_send_input(id, stuff) do
-    Genserver.cast(Catan.GameCoordinator.via(id, :game), stuff)
+    GenServer.cast(Catan.GameCoordinator.via(id, :game), stuff)
   end
 end

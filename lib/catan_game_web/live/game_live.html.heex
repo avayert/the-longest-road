@@ -1,5 +1,19 @@
-<p>You are playing as <%= @player_profile.name %> (id: <%=  @player_profile.id %>)</p>
-<p>Game id: <%= @game_id %></p>
+<h2>Lobby</h2>
+<p>
+    You are playing as <%= @player_profile.name %> (id: <%=  @player_profile.id %>)
+    <br>
+    Game id: <%= @game_id %>
+</p>
+
+<h3>Settings</h3>
+
+<div class="lobby_settings">
+    <%= for option <- @lobby_options do %>
+        <.live_component module={CatanWeb.Components.LobbyOption} id={option.name} option={option} />
+    <% end %>
+</div>
+
+<h3>Input testing stuff</h3>
 
 <.form let={f} for={:test_inputs} phx-submit="player_input">
     <%= label f, :text %>

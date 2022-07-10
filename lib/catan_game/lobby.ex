@@ -3,6 +3,8 @@ defmodule Catan.Lobby do
 
   alias Catan.PubSub.Topics
 
+  use GenServer, restart: :transient
+
   defmodule State do
     use TypedStruct
 
@@ -65,8 +67,6 @@ defmodule Catan.Lobby do
     result
   end
 
-  use GenServer, restart: :transient
-
   def start_link(opts) do
     {name, state} = Keyword.pop(opts, :name)
     GenServer.start_link(__MODULE__, state, name: name)
@@ -80,12 +80,25 @@ defmodule Catan.Lobby do
     )
   end
 
+  def update_options(state) do
+    options =
+      (state.scenarios ++ [state.expansion, state.game_mode])
+      |> Enum.reject(fn mode -> mode == nil end)
+      |> Enum.map(fn mode -> mode.lobby_options() end)
+      |> List.flatten()
+
+    state |> put_in([:options], options)
+  end
+
   ## Impls
 
   @impl true
   def init(opts) do
     {id, opts} = Keyword.pop!(opts, :id)
-    state = State.new(id, opts)
+
+    state =
+      State.new(id, opts)
+      |> update_options()
 
     Phoenix.PubSub.subscribe(Catan.PubSub, Topics.lobby(id))
     {:ok, state}
@@ -93,7 +106,7 @@ defmodule Catan.Lobby do
 
   @impl true
   def handle_call(:stop, _from, state) do
-    {:stop, :shutdown, :ok, state}
+    {:stop, :normal, :ok, state}
   end
 
   @impl true
@@ -154,6 +167,15 @@ defmodule Catan.Lobby do
   @impl true
   def handle_call({:update_settings, _whatever}, _from, state) do
     {:reply, :nyi, state}
+  end
+
+  @impl true
+  def handle_call(:get_options, _from, state) do
+    {:reply, state.options, state}
+  end
+
+  def get_options(id) do
+    GenServer.call(Catan.GameCoordinator.via(id, :lobby), :get_options)
   end
 end
 

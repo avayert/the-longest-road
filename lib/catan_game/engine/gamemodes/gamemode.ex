@@ -23,11 +23,13 @@ defmodule Catan.Engine.GameMode do
 
   `{:discard, name}`
   """
-  @type lobby_setting_option ::
+  @type lobby_option ::
           {:option, atom(), String.t(), :range, Range.t() | [...], any()}
           | {:option, atom(), String.t(), :toggle, any(), boolean()}
           | {:option, atom(), String.t(), :select, [any()], any()}
           | {:discard, atom()}
+  # TODO: maybe rework these into their own struct types
+  #       that way i can even add their layout information
 
   # Callbacks
 
@@ -51,12 +53,12 @@ defmodule Catan.Engine.GameMode do
               state :: game_state()
             ) :: dispatch_result()
 
-  @callback lobby_settings() :: list(lobby_setting_option())
+  @callback lobby_options() :: list(lobby_option())
 
   @optional_callbacks [
     handle_step: 2,
     handle_step: 4,
-    lobby_settings: 0
+    lobby_options: 0
   ]
 
   defmacro __using__(opts) do
@@ -99,11 +101,11 @@ defmodule Catan.Engine.GameMode do
       end
 
       @impl true
-      def lobby_settings(), do: []
+      def lobby_options(), do: []
 
       defoverridable dispatch: 2,
                      handle_step: 2,
-                     lobby_settings: 0
+                     lobby_options: 0
     end
   end
 end

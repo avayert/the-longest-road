@@ -13,6 +13,7 @@ defmodule CatanWeb.GameLive do
         socket
         |> assign(:game_id, id)
         |> assign(:player_profile, session["player_profile"])
+        |> assign_new(:lobby_options, fn -> Catan.Lobby.get_options(id) end)
       else
         socket
         |> put_flash(:error, "No lobby with ID #{id} found.")

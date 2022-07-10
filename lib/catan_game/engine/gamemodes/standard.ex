@@ -64,7 +64,7 @@ defmodule Catan.Engine.GameMode.Standard do
   end
 
   @impl true
-  def lobby_settings() do
+  def lobby_options() do
     [
       LobbyOption.new(
         name: :win_vp,

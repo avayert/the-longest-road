@@ -59,7 +59,9 @@ defmodule Catan.Utils do
        |> Exception.format_stacktrace())
   end
 
-  @spec unwrap({atom(), any()}) :: any()
+  @type result :: any()
+
+  @spec unwrap({atom(), result()}) :: result()
   def unwrap({op, other}) when is_atom(op) do
     other
   end

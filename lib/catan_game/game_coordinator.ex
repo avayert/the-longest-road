@@ -107,8 +107,11 @@ defmodule Catan.GameCoordinator do
           Logger.info("[GC] Started lobby: #{id}")
           {:ok, id}
 
-        {:error, {_, stack}} = result when is_list(stack) ->
-          Logger.error("[GC] Error starting lobby:\n#{Exception.format_stacktrace(stack)}")
+        {:error, {err, stack}} = result when is_list(stack) ->
+          Logger.error(
+            "[GC] Error starting lobby, #{inspect(err)}:\n#{Exception.format_stacktrace(stack)}"
+          )
+
           result
 
         {:error, err} = result ->
