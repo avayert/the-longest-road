@@ -3,6 +3,7 @@ defmodule CatanWeb.GameLive do
 
   require Logger
 
+  import CatanWeb.Components.LobbyOption
   alias Catan.PubSub.Topics
   alias Catan.GameCoordinator, as: GC
 
@@ -28,13 +29,17 @@ defmodule CatanWeb.GameLive do
   end
 
   @impl true
-  def handle_event("player_input", params, %{assigns: %{game_id: id}} = socket) do
+  def handle_event("validate", params, %{assigns: %{game_id: id}} = socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("lobby_name_changed", %{"lobby_options" => %{"name" => name}} = params, %{assigns: %{game_id: id}} = socket) do
     Phoenix.PubSub.broadcast!(
       Catan.PubSub,
-      Topics.game(id),
-      {:player_input, params}
+      Topics.lobbies(),
+      {:lobby_name_changed, {id, "new_name"}}
     )
-
     {:noreply, socket}
   end
 

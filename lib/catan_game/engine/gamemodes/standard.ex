@@ -86,7 +86,26 @@ defmodule Catan.Engine.GameMode.Standard do
         type: :range,
         values: 2..99,
         default: 7
-      )
+      ),
+      LobbyOption.new(
+        name: :starting_layout,
+        display_name: "Starting Layout",
+        type: :select,
+        values: [:default, :crazy, :america, :canada, :europe],
+        default: :default
+      ),
+      LobbyOption.new(
+        name: :funky_mode,
+        display_name: "New Funky Mode",
+        type: :toggle,
+        default: true
+      ),
+      LobbyOption.new(
+        name: :name,
+        display_name: "Lobby Name",
+        type: :text,
+        default: "New Lobby"
+      ),
     ]
   end
 

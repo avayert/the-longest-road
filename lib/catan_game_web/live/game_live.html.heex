@@ -7,22 +7,12 @@
 
 <h3>Settings</h3>
 
-<div class="lobby_settings">
-    <%= for option <- @lobby_options do %>
-        <.live_component module={CatanWeb.Components.LobbyOption} id={option.name} option={option} />
-    <% end %>
-</div>
+<.form let={f} for={:lobby_options} phx-change="validate">
+  <%= for option <- @lobby_options do %>
+    <.option form={f} option={option} />
+  <% end %>
+</.form>
 
 <h3>Input testing stuff</h3>
-
-<.form let={f} for={:test_inputs} phx-submit="player_input">
-    <%= label f, :text %>
-    <%= text_input f, :text %>
-
-    <%= label f, :select %>
-    <%= select f, :select, 1..10 %>
-
-    <%= submit "Send" %>
-</.form>
 
 <%= live_redirect "Home", to: Routes.main_path(@socket, :index) %>
