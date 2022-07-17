@@ -23,8 +23,8 @@ defmodule Catan.Engine.HexGrid do
   @type grid_orientation :: :pointy | :flat
 
   typedstruct do
-    field :tiles, %{coords => map()}, default: %{}
-    field :orientation, grid_orientation, default: :pointy
+    field :tiles, %{coords() => map()}, default: %{}
+    field :orientation, grid_orientation(), default: :pointy
   end
 
   use Accessible

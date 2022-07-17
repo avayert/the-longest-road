@@ -134,9 +134,19 @@ defmodule Catan.Engine.HexTile do
   @grid_vectors [{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}]
 
   # Starts at rightmost tile and goes counterclockwise
-  # @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
+  @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
 
   # TODO: angle/degree/whatever_to_offset function
+
+  @spec vector(index :: non_neg_integer()) :: axial_offset()
+  def vector(index) do
+    Enum.at(@grid_vectors, index)
+  end
+
+  @spec vector_alt(index :: non_neg_integer()) :: axial_offset()
+  def vector_alt(index) do
+    Enum.at(@grid_vectors_alt, index)
+  end
 
   @spec get_neighbor(coordlike, axial_offset) :: tile
   @doc "TODO"
@@ -258,6 +268,26 @@ defmodule Catan.Engine.HexTile do
   @spec rotate(tile, tile, atom(), 0) :: tile
   def rotate(tile, _around, _direction, 0) do
     tile |> new()
+  end
+
+  @spec ring(tile, pos_integer()) :: [tile]
+  def ring(center, radius) when is_coordlike(center) and is_integer(radius) do
+    start = add(center, scale(vector_alt(4), radius))
+
+    Enum.reduce(0..5, [start], fn i, acc ->
+      Enum.reduce(0..(radius - 1), acc, fn _, acc ->
+        [get_neighbor(hd(acc), vector_alt(i)) | acc]
+      end)
+    end)
+    |> tl()
+    |> Enum.reverse()
+  end
+
+  @spec spiral(tile, pos_integer()) :: [tile]
+  def spiral(center, radius) when is_coordlike(center) and is_integer(radius) do
+    Enum.reduce(1..radius, [new(center)], fn r, acc ->
+      acc ++ ring(center, r)
+    end)
   end
 
   # TODO: distances
