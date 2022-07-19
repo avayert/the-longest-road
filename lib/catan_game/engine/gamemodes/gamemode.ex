@@ -23,13 +23,7 @@ defmodule Catan.Engine.GameMode do
 
   `{:discard, name}`
   """
-  @type lobby_option ::
-          {:option, atom(), String.t(), :range, Range.t() | [...], any()}
-          | {:option, atom(), String.t(), :toggle, any(), boolean()}
-          | {:option, atom(), String.t(), :select, [any()], any()}
-          | {:discard, atom()}
-  # TODO: maybe rework these into their own struct types
-  #       that way i can even add their layout information
+  @type lobby_option :: Catan.LobbyOption.t()
 
   # Callbacks
 

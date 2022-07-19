@@ -5,7 +5,7 @@ defmodule CatanWeb.MainLive do
 
   alias Catan.PubSub.Topics
   alias Catan.GameCoordinator, as: GC
-  alias Catan.LobbyInfo
+  # alias Catan.LobbyInfo
 
   import Catan.Utils, only: [unwrap: 1]
 

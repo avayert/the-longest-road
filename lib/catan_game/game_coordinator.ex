@@ -13,7 +13,7 @@ defmodule Catan.GameCoordinator do
   alias Catan.PubSub.Topics
   alias Catan.Engine.Player, as: Player
 
-  @type error_tuple :: {:error, atom()}
+  @type error_tuple :: {:error, atom() | {atom(), any()}}
   @type via_tuple() :: {:via, module(), {module(), String.t()}}
   @typep via_registries :: :lobby | :game | :map | :player
 
@@ -264,7 +264,7 @@ defmodule Catan.GameCoordinator do
   ## Public API
   # Lobbies
 
-  @spec create_lobby(player :: Player.t()) ::
+  @spec create_lobby(player :: Player.t() | nil) ::
           {:ok, String.t()} | error_tuple()
   def create_lobby(player \\ nil) do
     GenServer.call(__MODULE__, {:create_lobby, player})
@@ -298,7 +298,7 @@ defmodule Catan.GameCoordinator do
 
   # Games
 
-  @spec start_game(lobby_id :: String.t()) :: :ok | error_tuple()
+  @spec start_game(lobby_id :: String.t()) :: {:ok, String.t()} | error_tuple()
   def start_game(lobby_id) do
     GenServer.call(__MODULE__, {:start_game, lobby_id})
   end

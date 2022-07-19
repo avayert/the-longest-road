@@ -10,7 +10,23 @@ defmodule Catan.MixProject do
       compilers: [:gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      dialyzer: [
+        flags: ~w[error_handling
+                  no_behaviours
+                  no_contracts
+                  no_fail_call
+                  no_fun_app
+                  no_improper_lists
+                  no_match
+                  no_missing_calls
+                  no_opaque
+                  no_return
+                  no_undefined_callbacks
+                  no_unused
+                  unknown
+        ]a
+      ]
     ]
   end
 

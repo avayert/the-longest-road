@@ -9,7 +9,7 @@ defmodule Catan.Game do
   require Logger
 
   alias Catan.PubSub.Topics
-  alias Catan.LobbyOption
+  # alias Catan.LobbyOption
   alias Catan.Engine.Directive
   require Directive
 
@@ -138,11 +138,12 @@ defmodule Catan.Game do
   ## Actual functions
 
   @spec get_lobby_settings(state :: GameState.t()) :: [
-          Catan.Engine.GameMode.lobby_setting_option()
+          Catan.Engine.GameMode.lobby_option()
         ]
   def get_lobby_settings(_state) do
     # TODO: combine
     # default_lobby_options()
+    []
   end
 
   @spec step_game(state :: game_state()) :: step_result()
@@ -222,7 +223,7 @@ defmodule Catan.Game do
 
   @spec dispatch(
           state :: game_state(),
-          directives :: DirectiveStack.t()
+          directives :: [Directive.t()]
         ) :: any()
   def dispatch(state, directives) do
     Enum.reduce_while(state.mode_tree, nil, fn mod, _acc ->

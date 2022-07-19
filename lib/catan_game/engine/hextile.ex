@@ -270,7 +270,7 @@ defmodule Catan.Engine.HexTile do
     tile |> new()
   end
 
-  @spec ring(tile, pos_integer()) :: [tile]
+  @spec ring(coordlike, pos_integer()) :: [tile]
   def ring(center, radius) when is_coordlike(center) and is_integer(radius) do
     start = add(center, scale(vector_alt(4), radius))
 
@@ -283,7 +283,7 @@ defmodule Catan.Engine.HexTile do
     |> Enum.reverse()
   end
 
-  @spec spiral(tile, pos_integer()) :: [tile]
+  @spec spiral(coordlike, pos_integer()) :: [tile]
   def spiral(center, radius) when is_coordlike(center) and is_integer(radius) do
     Enum.reduce(1..radius, [new(center)], fn r, acc ->
       acc ++ ring(center, r)

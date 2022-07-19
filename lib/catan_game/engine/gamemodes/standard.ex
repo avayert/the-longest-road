@@ -105,7 +105,7 @@ defmodule Catan.Engine.GameMode.Standard do
         display_name: "Lobby Name",
         type: :text,
         default: "New Lobby"
-      ),
+      )
     ]
   end
 

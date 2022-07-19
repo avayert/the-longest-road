@@ -44,14 +44,14 @@ defmodule Catan.Engine.HexGrid do
 
   ## Data functions
 
-  @spec get_data(grid, coordlike) :: map
+  @spec get_data(grid(), coordlike()) :: map()
   @doc "Get data on a tile from a grid"
   def get_data(grid, coords) when is_grid(grid) and is_coordlike(coords) do
     coords = coords_from(coords)
     Map.get(grid.tiles, coords, %{})
   end
 
-  @spec put_data(grid, coordlike, map()) :: grid
+  @spec put_data(grid(), coordlike(), map()) :: grid()
   @doc "Insert (merge) data into the tilestate in a grid, overwriting if already present"
   def put_data(grid, tile, state)
       when is_grid(grid) and is_coordlike(tile) and is_map(state) do
@@ -75,7 +75,7 @@ defmodule Catan.Engine.HexGrid do
   #   grid
   # end
 
-  @spec clear_data(grid, coordlike) :: grid
+  @spec clear_data(grid(), coordlike()) :: grid()
   @doc "Clear tilestate data for a tile, resetting it to an empty map"
   def clear_data(grid, tile) when is_grid(grid) and is_coordlike(tile) do
     coords = coords_from(tile)

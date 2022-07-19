@@ -8,8 +8,6 @@ defmodule Catan.Lobby do
   defmodule State do
     use TypedStruct
 
-    alias Catan.Utils
-
     @type game_speed :: :none | :slow | :normal | :fast | :turbo
     # TODO: figure out a system to get times for different state directives
 
@@ -34,7 +32,7 @@ defmodule Catan.Lobby do
     use Accessible
 
     def new(id, opts \\ []) do
-      %__MODULE__{id: id} |> Utils.update_map(opts)
+      struct!(%__MODULE__{id: id}, opts)
     end
 
     @spec set_setting(state :: t(), option :: atom(), value :: any()) :: State.t()
@@ -47,13 +45,21 @@ defmodule Catan.Lobby do
       Enum.find(state.options, fn {opt, _val} -> opt.name == setting end)
     end
 
+    @spec get_setting_value(state :: t(), setting :: atom()) :: any()
+    def get_setting_value(state, setting) do
+      Enum.find(state.options, fn {opt, val} when opt.name == setting -> val end)
+    end
+
     @spec ready?(state :: t()) :: boolean()
     def ready?(state) do
       Enum.all?(state.ready_states, fn {_, v} -> v end)
     end
   end
 
+  @type t :: State.t()
+
   defdelegate get_setting(state, option), to: State
+  defdelegate get_setting_value(state, option), to: State
 
   def set_setting(state, option, value) do
     result = State.set_setting(state, option, value)
@@ -123,7 +129,7 @@ defmodule Catan.Lobby do
 
   @impl true
   def handle_call({:add_player, player}, _from, state) do
-    if length(state.players) < get_setting(state, :max_players) do
+    if length(state.players) < get_setting_value(state, :max_players) do
       state = update_in(state, [:players], &[player | &1])
 
       {:reply, :ok, state}
