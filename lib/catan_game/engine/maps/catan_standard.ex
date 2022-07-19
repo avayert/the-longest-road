@@ -2,6 +2,7 @@ defmodule Catan.Engine.Maps.Standard do
   @behaviour Catan.Engine.MapTemplate
 
   alias Catan.Engine.{HexGrid, HexTile}
+  import Catan.Utils, only: [expand_kwlist: 1]
 
   @resource_tiles [
     forest: 4,
@@ -102,11 +103,5 @@ defmodule Catan.Engine.Maps.Standard do
 
   defp align_harbors(grid, _opts) do
     grid
-  end
-
-  defp expand_kwlist(list) do
-    Enum.flat_map(list, fn {item, count} ->
-      List.duplicate(item, count)
-    end)
   end
 end

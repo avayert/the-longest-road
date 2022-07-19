@@ -65,4 +65,11 @@ defmodule Catan.Utils do
   def unwrap({op, other}) when is_atom(op) do
     other
   end
+
+  @spec expand_kwlist([{term(), integer()}]) :: [term()]
+  def expand_kwlist(list) do
+    Enum.flat_map(list, fn {item, count} ->
+      List.duplicate(item, count)
+    end)
+  end
 end
