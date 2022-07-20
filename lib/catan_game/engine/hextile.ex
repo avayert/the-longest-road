@@ -131,10 +131,27 @@ defmodule Catan.Engine.HexTile do
   end
 
   # Starts at upper left tile and goes clockwise
-  @grid_vectors [{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}]
+  # @grid_vectors [{0, -1}, {1, -1}, {1, 0}, {0, 1}, {-1, 1}, {-1, 0}]
 
   # Starts at rightmost tile and goes counterclockwise
-  @grid_vectors_alt [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
+  @grid_vectors [{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}]
+
+  @grid_orientations_pointy [
+    :right,
+    :topright,
+    :topleft,
+    :left,
+    :bottomleft,
+    :bottomright
+  ]
+  @grid_orientations_flat [
+    :bottomright,
+    :topright,
+    :top,
+    :topleft,
+    :bottomleft,
+    :bottom
+  ]
 
   # TODO: angle/degree/whatever_to_offset function
 
@@ -144,9 +161,26 @@ defmodule Catan.Engine.HexTile do
     Enum.at(@grid_vectors, index)
   end
 
-  @spec vector_alt(index :: non_neg_integer()) :: axial_offset()
-  def vector_alt(index) do
-    Enum.at(@grid_vectors_alt, index)
+  # @spec vector_alt(index :: non_neg_integer()) :: axial_offset()
+  # def vector_alt(index) do
+  #   Enum.at(@grid_vectors_alt, index)
+  # end
+
+  @spec get_orientaion_vector(
+          direction :: offset_direction(),
+          orientation :: grid_orientation()
+        ) :: axial_offset()
+  @doc "Atom vector direction to offset coordinates"
+  def get_orientaion_vector(direction, orientation)
+
+  def get_orientaion_vector(direction, :pointy) do
+    index = Enum.find_index(@grid_orientations_pointy, &(&1 == direction))
+    Enum.at(@grid_vectors, index)
+  end
+
+  def get_orientaion_vector(direction, :flat) do
+    index = Enum.find_index(@grid_orientations_flat, &(&1 == direction))
+    Enum.at(@grid_vectors, index)
   end
 
   @spec get_neighbor(tile :: coordlike, offset :: axial_offset) :: tile
@@ -194,28 +228,36 @@ defmodule Catan.Engine.HexTile do
       when direction in @grid_offset_directions
       when orientation in @grid_orientations do
     #
-    case orientation do
-      :flat ->
-        case direction do
-          :top -> {1, -2}
-          :topright -> {2, -1}
-          :bottomright -> {1, 1}
-          :bottom -> {-1, 2}
-          :bottomleft -> {-2, 1}
-          :topleft -> {-1, -1}
-        end
-
-      :pointy ->
-        case direction do
-          :topright -> {1, -2}
-          :right -> {2, -2}
-          :bottomright -> {1, 1}
-          :bottomleft -> {-1, 2}
-          :left -> {-2, 1}
-          :topleft -> {-1, -1}
-        end
-    end
+    get_diagional_orientation_vector(direction, orientation)
     |> add(tile)
+  end
+
+  @spec get_diagional_orientation_vector(
+          direction :: offset_direction,
+          orientation :: grid_orientation()
+        ) :: diag_offset()
+  def get_diagional_orientation_vector(direction, orientation)
+
+  def get_diagional_orientation_vector(direction, :pointy) do
+    case direction do
+      :top -> {1, -2}
+      :topright -> {2, -1}
+      :bottomright -> {1, 1}
+      :bottom -> {-1, 2}
+      :bottomleft -> {-2, 1}
+      :topleft -> {-1, -1}
+    end
+  end
+
+  def get_diagional_orientation_vector(direction, :flat) do
+    case direction do
+      :topright -> {1, -2}
+      :right -> {2, -2}
+      :bottomright -> {1, 1}
+      :bottomleft -> {-1, 2}
+      :left -> {-2, 1}
+      :topleft -> {-1, -1}
+    end
   end
 
   @typep gcn_opts :: [no_args: true]
@@ -282,11 +324,11 @@ defmodule Catan.Engine.HexTile do
 
   @spec ring(center :: coordlike, radius :: pos_integer()) :: [tile]
   def ring(center, radius) when is_coordlike(center) and is_integer(radius) do
-    start = add(center, scale(vector_alt(4), radius))
+    start = add(center, scale(vector(4), radius))
 
     Enum.reduce(0..5, [start], fn i, acc ->
       Enum.reduce(0..(radius - 1), acc, fn _, acc ->
-        [get_neighbor(hd(acc), vector_alt(i)) | acc]
+        [get_neighbor(hd(acc), vector(i)) | acc]
       end)
     end)
     |> tl()
