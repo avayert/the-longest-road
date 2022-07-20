@@ -102,6 +102,28 @@ defmodule Catan.Engine.Maps.Standard do
   end
 
   defp align_harbors(grid, _opts) do
-    grid
+    vectors =
+      [:right, :bottomright, :bottomleft, :left, :topleft, :topright]
+      |> Enum.flat_map(&List.duplicate(&1, 3))
+
+    assigned_vectors =
+      HexTile.ring({0, 0}, 3)
+      |> Enum.slide(-1, 0)
+      |> Enum.reverse()
+      |> Enum.map(&HexTile.coords_from(&1))
+      |> Enum.zip(vectors)
+      |> Enum.into(%{})
+
+    update_in(
+      grid.tiles,
+      &Enum.reduce(&1, grid.tiles, fn
+        {coord, %{harbor: _}}, tiles ->
+          hdir = Map.get(assigned_vectors, coord)
+          put_in(tiles, [coord, :harbor_direction], hdir)
+
+        _state, tiles ->
+          tiles
+      end)
+    )
   end
 end
