@@ -1,8 +1,7 @@
 defmodule Catan.Utils do
-  @moduledoc false
+  @moduledoc "Miscellaneous utility functions"
 
   # @spec update_map(struct :: struct(), options :: keyword()) :: struct()
-  # @doc "Updates a map or struct with options from a keyword list"
   # def update_map(struct, options)
   #     when is_struct(struct) and (is_list(options) or is_map(options)) do
   #   #
@@ -10,6 +9,7 @@ defmodule Catan.Utils do
   # end
 
   @spec update_map(map :: map(), options :: keyword()) :: map()
+  @doc "Updates a map with options from a keyword list"
   def update_map(map, options)
       when is_map(map) and (is_list(options) or is_map(options)) do
     #
@@ -34,7 +34,7 @@ defmodule Catan.Utils do
     #       likely unnecessary but you know, that 1-in-1M chance
   end
 
-  @spec weighted_random(keyword(pos_integer)) :: atom()
+  @spec weighted_random(keyword(pos_integer())) :: atom()
   def weighted_random(items) do
     # https://elixirforum.com/t/weight-based-random-sampling/23345/4
 
@@ -51,6 +51,8 @@ defmodule Catan.Utils do
     end)
   end
 
+  @spec get_stacktrace() :: String.t()
+  @spec get_stacktrace(drop :: non_neg_integer()) :: String.t()
   def get_stacktrace(drop \\ 2) do
     "Stacktrace for #{inspect(self())}:\n" <>
       (Process.info(self(), :current_stacktrace)

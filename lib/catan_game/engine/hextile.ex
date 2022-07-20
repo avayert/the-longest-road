@@ -23,7 +23,7 @@ defmodule Catan.Engine.HexTile do
   @type axial_offset :: {-1..1, -1..1}
   @type diag_offset :: {1, -2} | {2, -1} | {1, 1} | {-1, 2} | {-2, 1} | {-1, -1}
   @type grid_orientation :: :pointy | :flat
-  @type offset_directions ::
+  @type offset_direction ::
           :top
           | :topleft
           | :topright
@@ -80,7 +80,7 @@ defmodule Catan.Engine.HexTile do
 
   ## Math functions
 
-  @spec add(coordlike, coordlike) :: tile
+  @spec add(a :: coordlike, b :: coordlike) :: tile
   @doc "TODO"
   def add(a, b) when is_coordlike(a, b) do
     {q1, r1} = coords_from(a)
@@ -88,7 +88,7 @@ defmodule Catan.Engine.HexTile do
     new({q1 + q2, r1 + r2})
   end
 
-  @spec sub(coordlike, coordlike) :: tile
+  @spec sub(a :: coordlike, b :: coordlike) :: tile
   @doc "TODO"
   def sub(a, b) when is_coordlike(a, b) do
     {q1, r1} = coords_from(a)
@@ -96,14 +96,14 @@ defmodule Catan.Engine.HexTile do
     new({q1 - q2, r1 - r2})
   end
 
-  @spec scale(coordlike, pos_integer()) :: tile
+  @spec scale(a :: coordlike, k :: pos_integer()) :: tile
   @doc "TODO aka mul()"
   def scale(a, k) when is_coordlike(a) and is_integer(k) and k > 0 do
     {q, r} = coords_from(a)
     new({q * k, r * k})
   end
 
-  @spec downscale(coordlike, pos_integer()) ::
+  @spec downscale(a :: coordlike, k :: pos_integer()) ::
           {:ok, tile} | {:error, {float | integer, float | integer}}
   @doc "TODO"
   def downscale(a, k) when is_coordlike(a) and is_integer(k) and k > 0 do
@@ -115,14 +115,14 @@ defmodule Catan.Engine.HexTile do
     end
   end
 
-  @spec length(coordlike) :: integer
+  @spec length(a :: coordlike) :: integer
   @doc "TODO"
   def length(a) when is_coordlike(a) do
     tile = new(a)
     round((abs(tile.q) + abs(tile.r) + abs(tile.s)) / 2)
   end
 
-  @spec distance(coordlike, coordlike) :: integer
+  @spec distance(a :: coordlike, b :: coordlike) :: integer
   @doc "TODO"
   def distance(a, b) when is_coordlike(a, b) do
     a = new(a)
@@ -139,6 +139,7 @@ defmodule Catan.Engine.HexTile do
   # TODO: angle/degree/whatever_to_offset function
 
   @spec vector(index :: non_neg_integer()) :: axial_offset()
+  @doc "Integer vector index to offset coordinates"
   def vector(index) do
     Enum.at(@grid_vectors, index)
   end
@@ -148,13 +149,13 @@ defmodule Catan.Engine.HexTile do
     Enum.at(@grid_vectors_alt, index)
   end
 
-  @spec get_neighbor(coordlike, axial_offset) :: tile
+  @spec get_neighbor(tile :: coordlike, offset :: axial_offset) :: tile
   @doc "TODO"
   def get_neighbor(tile, offset) when is_coordlike(tile) and offset in @grid_vectors do
     add(tile, offset)
   end
 
-  @spec get_neighbors(coordlike) :: [tile]
+  @spec get_neighbors(tile :: coordlike) :: [tile]
   @doc "TODO"
   def get_neighbors(tile) when is_coordlike(tile) do
     for direction <- @grid_vectors, into: [] do
@@ -164,7 +165,7 @@ defmodule Catan.Engine.HexTile do
 
   @grid_diagonal_vectors [{1, -2}, {2, -1}, {1, 1}, {-1, 2}, {-2, 1}, {-1, -1}]
 
-  @spec get_diagonal_neighbor(tile, diag_offset) :: tile
+  @spec get_diagonal_neighbor(tile :: tile, offset :: diag_offset) :: tile
   @doc "TODO"
   def get_diagonal_neighbor(tile, offset)
       when is_coordlike(tile) and offset in @grid_diagonal_vectors do
@@ -183,7 +184,11 @@ defmodule Catan.Engine.HexTile do
   ]
   @grid_orientations [:flat, :pointy]
 
-  @spec get_diagonal_neighbor(tile, offset_directions, grid_orientation) :: tile
+  @spec get_diagonal_neighbor(
+          tile :: tile,
+          direction :: offset_direction,
+          orientation :: grid_orientation
+        ) :: tile
   def get_diagonal_neighbor(tile, direction, orientation \\ :pointy)
       when is_coordlike(tile)
       when direction in @grid_offset_directions
@@ -214,8 +219,8 @@ defmodule Catan.Engine.HexTile do
   end
 
   @typep gcn_opts :: [no_args: true]
-  @spec get_common_neighbors([coordlike]) :: [tile]
-  @spec get_common_neighbors([coordlike], gcn_opts) :: [tile]
+  @spec get_common_neighbors(tiles :: [coordlike]) :: [tile]
+  @spec get_common_neighbors(tiles :: [coordlike], opts :: gcn_opts) :: [tile]
   @doc "TODO (this function literally took me 80 minutes to write)"
   def get_common_neighbors(tiles, opts \\ []) when is_list(tiles) and is_list(opts) do
     strip_args =
@@ -237,13 +242,18 @@ defmodule Catan.Engine.HexTile do
 
   @rotate_directions [:left, :right]
 
-  @spec rotate(tile, tile, atom()) :: tile
+  @spec rotate(tile :: tile, around :: tile, direction :: atom()) :: tile
   @doc "TODO"
   def rotate(tile, around, direction) do
     rotate(tile, around, direction, 1)
   end
 
-  @spec rotate(tile, tile, atom(), pos_integer()) :: tile
+  @spec rotate(
+          tile :: tile,
+          around :: tile,
+          direction :: atom(),
+          turns :: pos_integer()
+        ) :: tile
   @doc "TODO"
   def rotate(tile, around, direction, turns)
       when is_coordlike(tile, around)
@@ -270,7 +280,7 @@ defmodule Catan.Engine.HexTile do
     tile |> new()
   end
 
-  @spec ring(coordlike, pos_integer()) :: [tile]
+  @spec ring(center :: coordlike, radius :: pos_integer()) :: [tile]
   def ring(center, radius) when is_coordlike(center) and is_integer(radius) do
     start = add(center, scale(vector_alt(4), radius))
 
@@ -283,7 +293,7 @@ defmodule Catan.Engine.HexTile do
     |> Enum.reverse()
   end
 
-  @spec spiral(coordlike, pos_integer()) :: [tile]
+  @spec spiral(center :: coordlike, radius :: pos_integer()) :: [tile]
   def spiral(center, radius) when is_coordlike(center) and is_integer(radius) do
     Enum.reduce(1..radius, [new(center)], fn r, acc ->
       acc ++ ring(center, r)
@@ -294,7 +304,7 @@ defmodule Catan.Engine.HexTile do
   # TODO: pathfinding
   # (eastar, https://github.com/wkhere/eastar/blob/master/lib/examples/geo.ex)
 
-  @spec axial_to_evenr(tile) :: tile
+  @spec axial_to_evenr(tile :: tile) :: tile
   def axial_to_evenr(hex) when is_tile(hex) do
     col = (hex.q + (hex.r + (hex.r &&& 1))) |> div(2)
     {col, hex.r} |> new()
