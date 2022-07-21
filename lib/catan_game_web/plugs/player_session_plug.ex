@@ -30,10 +30,15 @@ defmodule CatanWeb.Plugs.PlayerSessionPlug do
   defp new_player() do
     <<l::utf8, rest::binary>> = MnemonicSlugs.generate_slug(1)
     name = Enum.random(@titles) <> " " <> String.upcase(<<l>>) <> rest
-    %Catan.Engine.Player{name: name}
+    %Catan.Player{name: name}
   end
 
-  defp refresh_player(player) when is_struct(player, Catan.Engine.Player) do
-    struct!(Catan.Engine.Player, player |> Map.from_struct())
+  defp refresh_player(player) when is_struct(player, Catan.Player) do
+    struct!(Catan.Player, player |> Map.from_struct())
+  end
+
+  defp refresh_player(player) when is_struct(player) do
+    # this shouldn't be necessary but i'll leave it for now
+    struct!(Catan.Player, player |> Map.from_struct())
   end
 end
