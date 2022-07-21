@@ -93,7 +93,9 @@ defmodule Catan.Lobby do
       |> Enum.map(fn mode -> mode.lobby_options() end)
       |> List.flatten()
 
-    state |> put_in([:options], options)
+    options = Catan.Lobby.BaseOptions.options() ++ options
+
+    put_in(state, [:options], options)
   end
 
   ## Impls
@@ -231,11 +233,12 @@ defmodule Catan.Lobby.BaseOptions do
         name: :private_game,
         display_name: "Private game",
         type: :toggle,
-        default: false
+        default: true
       ),
       LobbyOption.new(
         name: :game_speed,
         display_name: "Game speed",
+        event: false,
         type: :select,
         values: @game_speeds,
         default: :normal
