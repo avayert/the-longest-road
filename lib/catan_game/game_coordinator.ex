@@ -82,6 +82,11 @@ defmodule Catan.GameCoordinator do
     {:reply, exists?(id, type), state}
   end
 
+  @impl true
+  def handle_call({:get_id_state, id}, _from, state) do
+    {:reply, get_id_state_(id), state}
+  end
+
   ## Lobbies
 
   ### create_lobby(player \\ nil)
@@ -261,7 +266,43 @@ defmodule Catan.GameCoordinator do
     result
   end
 
+  defp get_id_state_(id) do
+    get_id_state_(id, [:lobby, :game, :player, :map])
+  end
+
+  defp get_id_state_(_id, type) when is_atom(type) do
+    # TODO: more info
+    # case type do
+    #   :lobby -> {type, :exists}
+    #   :game -> {type, :exists}
+    #   :player -> {type, :exists}
+    #   :map -> {type, :exists}
+    # end
+    {type, :exists}
+  end
+
+  defp get_id_state_(id, [type | others]) do
+    thing =
+      if not unique_id?(id, type) do
+        type
+      else
+        others
+      end
+
+    get_id_state_(id, thing)
+  end
+
+  defp get_id_state_(_id, []) do
+    {:unknown, :none}
+  end
+
   ## Public API
+
+  @spec get_id_state(id :: String.t()) :: {via_registries() | :unknown, atom()}
+  def get_id_state(id) do
+    GenServer.call(__MODULE__, {:get_id_state, id})
+  end
+
   # Lobbies
 
   @spec create_lobby(player :: Player.t() | nil) ::

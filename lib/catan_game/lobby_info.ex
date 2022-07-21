@@ -23,6 +23,8 @@ defmodule Catan.LobbyInfo do
         end
       end
 
+    # TODO: parse settings for name 
+
     struct(__MODULE__, fields)
   end
 end

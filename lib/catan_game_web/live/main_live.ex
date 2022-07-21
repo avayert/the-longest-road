@@ -113,6 +113,8 @@ defmodule CatanWeb.MainLive do
   def handle_event("start_game", %{"id" => id}, socket) do
     Logger.alert("Handling start_game: #{inspect(id)}")
 
+    # TODO: change from starting the game to just entering the lobby
+
     socket =
       case GC.start_game(id) do
         {:ok, _} ->

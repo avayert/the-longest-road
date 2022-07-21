@@ -80,7 +80,7 @@ defmodule Catan.Game do
       |> Map.update!(:game_directives, fn cur -> [directive | cur] end)
 
     Phoenix.PubSub.subscribe(Catan.PubSub, Topics.game(state.lobby.id))
-    {:ok, state, {:continue, :init}}
+    {:ok, state, {:continue, :lobby}}
   end
 
   @spec build_mode_list(state :: game_state()) :: game_state()
@@ -255,13 +255,13 @@ defmodule Catan.Game do
   end
 
   @impl true
-  def handle_continue(:init, state) do
-    # TODO: move players into game
+  def handle_continue(:lobby, state) do
     Logger.info(
       "[#{l_mod(1)}.#{l_fn()}:#{l_ln()}] " <>
-        "Pretending to move players into game #{state.lobby.id}"
+        "Pretending to do whatever in the lobby phase #{state.lobby.id}"
     )
 
+    # TODO: move players into game in the next phase
     # {:noreply, state, {:continue, :postinit}}
     {:noreply, state}
   end

@@ -83,4 +83,15 @@ defmodule Catan.Engine.HexGrid do
 
     %HexGrid{grid | tiles: new_tiles}
   end
+
+  @spec coord_list(t()) :: [tile()]
+  def coord_list(state) do
+    state.tiles
+    |> Map.keys()
+  end
+
+  # @spec map_coords([coordlike()], (coordlike() -> any())) :: grid()
+  # def map_coords(coords, func) when is_list(coords) do
+  #   Enum.map(coords, func)
+  # end
 end
