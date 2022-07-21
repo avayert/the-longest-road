@@ -60,6 +60,12 @@ defmodule CatanWeb.MainLive do
   end
 
   @impl true
+  def mount(_params, _session, %{assigns: %{live_action: :redirect}} = socket) do
+    # TODO: redirect based on lobby/game status
+    {:ok, socket |> push_redirect(to: Routes.main_path(socket, :index))}
+  end
+
+  @impl true
   def mount(params, session, socket) do
     loading_method =
       case Map.get(params, @param_lobby_load_style) do
@@ -110,15 +116,20 @@ defmodule CatanWeb.MainLive do
     socket =
       case GC.start_game(id) do
         {:ok, _} ->
-          socket |> assign(:game_id, id) |> push_redirect(to: "/#{id}")
+          socket
+          |> assign(:game_id, id)
+          |> push_redirect(to: Routes.lobby_path(socket, :index, id))
 
         {:error, {:already_started, _pid}} ->
-          socket |> assign(:game_id, id) |> push_redirect(to: "/#{id}")
+          socket
+          |> assign(:game_id, id)
+          # TODO: change lobby_path to game_path
+          |> push_redirect(to: Routes.lobby_path(socket, :index, id))
 
         {:error, reason} ->
           socket
           |> put_flash(:error, "Error starting game #{id}, #{inspect(reason)}.")
-          |> push_redirect(to: "/")
+          |> push_redirect(to: Routes.main_path(socket, :index))
       end
 
     {:noreply, socket}

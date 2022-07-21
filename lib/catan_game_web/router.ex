@@ -12,7 +12,7 @@ defmodule CatanWeb.Router do
     plug :put_secure_browser_headers
   end
 
-  pipeline :userfacing do
+  pipeline :usersession do
     plug Plugs.PlayerSessionPlug
   end
 
@@ -38,22 +38,19 @@ defmodule CatanWeb.Router do
   end
 
   scope "/", CatanWeb do
-    pipe_through :browser
-    pipe_through :userfacing
+    pipe_through [:browser, :usersession]
+    # pipe_through :usersession
 
     # https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.Router.html#live_session/3
     live_session :mainmenu do
       live "/", MainLive, :index
-      live "/:id", GameLive, :index
-      # idk if i need those :index options here???
+      live "/:id", MainLive, :redirect
+      live "/lobby/:id", LobbyLive, :index
     end
 
     ###
     ### The helper functions can be found with `mix phx.routes`
     ###
-
-    # live "/", MainLive, :index
-    # live "/:id", GameLive
 
     # we need /catan, //lobby, //watch, //game/:id
     # if we're not doing the subdomain that is

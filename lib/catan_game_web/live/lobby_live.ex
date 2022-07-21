@@ -1,4 +1,4 @@
-defmodule CatanWeb.GameLive do
+defmodule CatanWeb.LobbyLive do
   use CatanWeb, :live_view
 
   require Logger
@@ -19,7 +19,7 @@ defmodule CatanWeb.GameLive do
       else
         socket
         |> put_flash(:error, "No lobby with ID #{id} found.")
-        |> push_redirect(to: "/")
+        |> push_redirect(to: Routes.main_path(socket, :index))
       end
 
     if connected?(socket) do
@@ -62,7 +62,7 @@ defmodule CatanWeb.GameLive do
   end
 
   @impl true
-  def handle_event("option_" <> option, params, %{assigns: %{}} = socket) do
+  def handle_event("option_" <> option, _params, %{assigns: %{}} = socket) do
     Logger.debug("not handling option event #{option}")
     {:noreply, socket}
   end
@@ -73,7 +73,7 @@ defmodule CatanWeb.GameLive do
       if socket.assigns.game_id == id do
         socket
         |> put_flash(:error, "Lobby #{id} destroyed")
-        |> push_redirect(to: "/")
+        |> push_redirect(to: Routes.main_path(socket, :index))
       else
         socket
       end
