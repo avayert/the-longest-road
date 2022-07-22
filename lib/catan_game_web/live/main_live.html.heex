@@ -11,9 +11,8 @@
     <%= for lobby <- @lobbies do %>
         <div class="lobbyitem">
             <%= lobby.name %> - <%= lobby.id %>
-            <button phx-click="delete_lobby" phx-value-id={lobby.id}>X</button>
-            <!-- This should not start a game, just change the view -->
-            <button phx-click="start_game" phx-value-id={lobby.id}>></button>
+            <button style="background-color: red" phx-click="delete_lobby" phx-value-id={lobby.id}>X</button>
+            <button phx-click="join_lobby" phx-value-id={lobby.id}>></button>
         </div>
     <% end %>
 </div>
