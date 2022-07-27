@@ -62,7 +62,20 @@ defmodule CatanWeb.LobbyLive do
         %{assigns: %{game_id: id} = _assigns} = socket
       ) do
     #
-    Logger.info("Changes: #{inspect(changes)}")
+    Logger.info("Lobby settings: #{inspect(changes)}")
+    send_lobby_setting_update(id, changes)
+    send_lobbyinfo_update(id)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event(
+        "validate_" <> _option,
+        %{"lobby_options" => changes} = _params,
+        %{assigns: %{game_id: id} = _assigns} = socket
+      ) do
+    #
+    # Logger.debug("Sorta handling option event: #{option}")
     send_lobby_setting_update(id, changes)
     send_lobbyinfo_update(id)
     {:noreply, socket}
@@ -71,12 +84,6 @@ defmodule CatanWeb.LobbyLive do
   @impl true
   def handle_event("start_game", _params, socket) do
     {:noreply, socket |> put_flash(:error, "Not implemented yet")}
-  end
-
-  @impl true
-  def handle_event("option_" <> option, _params, socket) do
-    Logger.debug("not handling option event: #{option}")
-    {:noreply, socket}
   end
 
   # Pubsub events
@@ -92,11 +99,16 @@ defmodule CatanWeb.LobbyLive do
 
   @impl true
   def handle_info(
-        {:lobby_option_update, {_id, _}},
+        {:lobby_option_update, {_id, changes, _pid}},
         socket
         # %{assigns: %{game_id: id}} = socket
       ) do
-    # ignore updates from ourselves and update for others
+    # when pid != self() do
+    # for some reason when using this guard it doesnt always update properly
+    #
+    socket =
+      socket
+      |> assign(:lobby_settings, changes)
 
     {:noreply, socket}
   end
@@ -118,14 +130,19 @@ defmodule CatanWeb.LobbyLive do
   defp send_lobby_setting_update(id, changes) do
     Pubsub.broadcast(
       Topics.lobby(id),
-      Payloads.lobby(:lobby_option_update, {id, changes})
+      Payloads.lobby(:lobby_option_update, {id, changes, self()})
     )
   end
 
   defp send_lobbyinfo_update(id) do
     Pubsub.broadcast(
       Topics.lobbies(),
-      Payloads.lobbies(:lobbyinfo_update, Lobby.get_lobby_info(id))
+      Payloads.lobbies(:lobby_update, id)
     )
+
+    # Pubsub.broadcast(
+    #   Topics.lobbies(),
+    #   Payloads.lobbies(:lobbyinfo_update, Lobby.get_lobby_info(id))
+    # )
   end
 end

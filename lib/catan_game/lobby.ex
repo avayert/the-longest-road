@@ -39,6 +39,7 @@ defmodule Catan.Lobby do
     end
 
     defp populate_settings(state) do
+      # TODO
       state
     end
 
@@ -212,8 +213,9 @@ defmodule Catan.Lobby do
   # Pubsub
 
   @impl true
-  def handle_info({:lobby_option_update, {_id, changes}}, state) do
+  def handle_info({:lobby_option_update, {_id, changes, _}}, state) do
     # Logger.alert("lobby #{id} got changes #{inspect(changes)}\nHave state: #{inspect(state)}")
+
     {changes, state} =
       Map.pop(changes, "name")
       |> case do
@@ -227,7 +229,7 @@ defmodule Catan.Lobby do
 
   @impl true
   def handle_info(event, socket) do
-    Logger.debug("#{__MODULE__} not handling #{inspect(event)}")
+    # Logger.debug("#{__MODULE__} not handling #{inspect(event)}")
     {:noreply, socket}
   end
 end

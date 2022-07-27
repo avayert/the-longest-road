@@ -61,6 +61,6 @@ defmodule CatanWeb.Components.LobbyOption do
   end
 
   defp phx_event(option) do
-    "option_" <> option.event
+    "validate_" <> option.event
   end
 end
