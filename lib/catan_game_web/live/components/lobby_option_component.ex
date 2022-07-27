@@ -12,32 +12,51 @@ defmodule CatanWeb.Components.LobbyOption do
   def option(%{option: %{type: :range, values: min..max}} = assigns) do
     ~H"""
     <%= label @form, @option.name, @option.display_name %>
-    <%= number_input @form, @option.name, min: min, max: max, value: @option.default, phx_change: phx_event(@option) %>
+    <%= number_input @form,
+        @option.name,
+        min: min,
+        max: max,
+        value: @setting || @option.default,
+        phx_change: phx_event(@option)
+    %>
     """
   end
 
   def option(%{option: %{type: :select}} = assigns) do
     ~H"""
     <%= label @form, @option.name %>
-    <%= select @form, @option.name, @option.values, selected: @option.default, phx_change: phx_event(@option) %>
+    <%= select @form,
+        @option.name,
+        @option.values,
+        selected: @setting || @option.default,
+        phx_change: phx_event(@option)
+    %>
     """
   end
 
   def option(%{option: %{type: :toggle}} = assigns) do
     ~H"""
     <%= label @form, @option.name %>
-    <%= checkbox @form, @option.name, value: @option.default, phx_change: phx_event(@option) %>
+    <%= checkbox @form,
+        @option.name,
+        value: @setting || @option.default,
+        phx_change: phx_event(@option)
+    %>
     """
   end
 
   def option(%{option: %{type: :text}} = assigns) do
     ~H"""
     <%= label @form, @option.name %>
-    <%= text_input @form, @option.name, value: @option.default, phx_change: phx_event(@option) %>
+    <%= text_input @form,
+        @option.name,
+        value: @setting || @option.default,
+        phx_change: phx_event(@option)
+    %>
     """
   end
 
-  defp phx_event(%{event: false} = _option) do
+  defp phx_event(%{event: nil} = _option) do
     false
   end
 

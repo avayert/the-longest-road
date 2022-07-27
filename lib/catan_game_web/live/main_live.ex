@@ -90,8 +90,12 @@ defmodule CatanWeb.MainLive do
 
   @impl true
   def handle_event("create_lobby", _params, %{assigns: %{}} = socket) do
-    # I feel like I should do something with this return...
-    GC.create_lobby()
+    socket =
+      case GC.create_lobby() do
+        {:ok, _id} -> socket
+        {:error, issue} -> put_flash(socket, :error, "Error starting lobby: #{issue}")
+      end
+
     # TODO: move into lobby
     {:noreply, socket}
   end

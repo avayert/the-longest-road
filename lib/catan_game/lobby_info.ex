@@ -10,11 +10,13 @@ defmodule Catan.LobbyInfo do
     field :map_template, any(), default: nil
   end
 
-  def from_state(state) do
+  @spec from_state(state :: Catan.Lobby.State.t()) :: t()
+  def from_state(state) when is_struct(state, Catan.Lobby.State) do
     fields =
       for field <- Map.from_struct(state) do
         case field do
           {:id, _} -> field
+          {:name, _} -> field
           {:players, players} -> {:players, length(players)}
           {:expansion, _} -> field
           {:scenarios, _} -> field
@@ -22,8 +24,6 @@ defmodule Catan.LobbyInfo do
           _ -> {:ignore, :ignore}
         end
       end
-
-    # TODO: parse settings for name 
 
     struct(__MODULE__, fields)
   end

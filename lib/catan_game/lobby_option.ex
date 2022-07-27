@@ -6,7 +6,7 @@ defmodule Catan.LobbyOption do
   typedstruct enforce: true do
     field :name, atom()
     field :display_name, String.t()
-    field :event, String.t() | false, default: nil
+    field :event, String.t() | nil, default: nil
     field :type, atom()
     field :values, Enum.t(), default: []
     field :default, any(), default: nil
@@ -21,8 +21,8 @@ defmodule Catan.LobbyOption do
 
   defp ensure_fields(lobbyopts) do
     case lobbyopts.event do
-      nil -> struct!(lobbyopts, event: Atom.to_string(lobbyopts.name))
-      _ -> lobbyopts
+      nil -> lobbyopts
+      _ -> struct!(lobbyopts, event: Atom.to_string(lobbyopts.name))
     end
   end
 end

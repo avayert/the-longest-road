@@ -9,84 +9,123 @@ defmodule CatanWeb.LobbyLive do
   import CatanWeb.Components.LobbyOption
 
   alias Catan.GameCoordinator, as: GC
+  alias Catan.Lobby
 
   @impl true
-  def mount(%{"id" => id} = _params, session, socket) do
+  def mount(%{"id" => id} = params, session, socket) do
     socket =
       if GC.lobby_exists?(id) do
-        socket
-        |> assign(:game_id, id)
-        |> assign(:player_profile, session["player_profile"])
-        |> assign_new(:lobby_options, fn -> Catan.Lobby.get_options(id) end)
-        |> assign(:lobby_settings, %{})
+        setup_(params, session, socket)
       else
-        socket
-        |> put_flash(:error, "No lobby with ID #{id} found.")
-        |> push_redirect(to: Routes.main_path(socket, :index))
+        fail(socket, "No lobby with ID #{id} found.")
       end
 
     if connected?(socket) do
       Pubsub.subscribe(Topics.lobby(id))
+
+      Pubsub.broadcast(
+        Topics.lobby(id),
+        Payloads.lobby(:player_join, {id, session["player_profile"]})
+      )
     end
 
     {:ok, socket}
   end
 
+  defp setup_(%{"id" => id} = _params, session, socket) do
+    with player = session["player_profile"],
+         :ok <- Lobby.add_player(id, player) do
+      socket
+      |> assign(:game_id, id)
+      |> assign(:player_profile, player)
+      |> assign_new(:players, fn -> Lobby.get_players(id) end)
+      |> assign_new(:lobby_options, fn -> Lobby.get_options(id) end)
+      |> assign_new(:lobby_settings, fn -> Lobby.get_settings(id) end)
+    else
+      {:error, :lobby_full} ->
+        fail(socket, "Lobby is full")
+    end
+  end
+
+  defp fail(socket, message) do
+    socket
+    |> put_flash(:error, message)
+    |> push_redirect(to: Routes.main_path(socket, :index))
+  end
+
+  # Liveview events
+
   @impl true
   def handle_event(
         "validate",
-        _params,
-        %{
-          assigns: %{game_id: _id} = _assigns
-        } = socket
+        %{"lobby_options" => changes} = _params,
+        %{assigns: %{game_id: id} = _assigns} = socket
       ) do
     #
-    Logger.info("Validating")
-    # put form state somewhere
+    Logger.info("Changes: #{inspect(changes)}")
+    send_lobby_setting_update(id, changes)
+    send_lobbyinfo_update(id)
     {:noreply, socket}
   end
 
   @impl true
-  def handle_event(
-        "lobby_name_changed",
-        %{"lobby_options" => %{"lobby_name" => _name}} = _params,
+  def handle_event("start_game", _params, socket) do
+    {:noreply, socket |> put_flash(:error, "Not implemented yet")}
+  end
+
+  @impl true
+  def handle_event("option_" <> option, _params, socket) do
+    Logger.debug("not handling option event: #{option}")
+    {:noreply, socket}
+  end
+
+  # Pubsub events
+
+  @impl true
+  def handle_info(
+        {:delete_lobby, id},
         %{assigns: %{game_id: id}} = socket
       ) do
     #
-    Phoenix.PubSub.broadcast!(
-      Catan.PubSub,
-      Topics.lobbies(),
-      {:lobby_name_changed, {id, "new_name"}}
+    {:noreply, fail(socket, "Lobby #{id} destroyed")}
+  end
+
+  @impl true
+  def handle_info(
+        {:lobby_option_update, {_id, _}},
+        socket
+        # %{assigns: %{game_id: id}} = socket
+      ) do
+    # ignore updates from ourselves and update for others
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:player_join, {id, _player}}, socket) do
+    socket = socket |> assign(:players, Lobby.get_players(id))
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(event, socket) do
+    Logger.debug("#{__MODULE__} not handling #{inspect(event)}")
+    {:noreply, socket}
+  end
+
+  # Helper functions
+
+  defp send_lobby_setting_update(id, changes) do
+    Pubsub.broadcast(
+      Topics.lobby(id),
+      Payloads.lobby(:lobby_option_update, {id, changes})
     )
-
-    Logger.info("lobby name changed")
-
-    {:noreply, socket}
   end
 
-  @impl true
-  def handle_event("option_" <> option, _params, %{assigns: %{}} = socket) do
-    Logger.debug("not handling option event #{option}")
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info({:delete_lobby, id}, socket) do
-    socket =
-      if socket.assigns.game_id == id do
-        socket
-        |> put_flash(:error, "Lobby #{id} destroyed")
-        |> push_redirect(to: Routes.main_path(socket, :index))
-      else
-        socket
-      end
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info(thing, socket) do
-    Logger.debug("#{__MODULE__} not handling #{inspect(thing)}")
-    {:noreply, socket}
+  defp send_lobbyinfo_update(id) do
+    Pubsub.broadcast(
+      Topics.lobbies(),
+      Payloads.lobbies(:lobbyinfo_update, Lobby.get_lobby_info(id))
+    )
   end
 end

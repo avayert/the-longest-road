@@ -15,6 +15,7 @@ defmodule Catan.Lobby do
     typedstruct do
       field :id, String.t(), enforce: true
 
+      field :name, String.t(), default: "New Lobby"
       field :players, [any()], default: []
       field :ready_states, %{struct() => boolean()}, default: %{}
       field :game_started, boolean(), default: false
@@ -34,21 +35,11 @@ defmodule Catan.Lobby do
 
     def new(id, opts \\ []) do
       struct!(%__MODULE__{id: id}, opts)
+      |> populate_settings()
     end
 
-    @spec set_setting(state :: t(), option :: atom(), value :: any()) :: State.t()
-    def set_setting(state, option, value) when is_atom(option) do
-      update_in(state, [:settings, option], value)
-    end
-
-    @spec get_setting(state :: t(), setting :: atom()) :: {State.t(), any()}
-    def get_setting(state, setting) do
-      Enum.find(state.options, fn {opt, _val} -> opt.name == setting end)
-    end
-
-    @spec get_setting_value(state :: t(), setting :: atom()) :: any()
-    def get_setting_value(state, setting) do
-      Enum.find(state.options, fn {opt, val} when opt.name == setting -> val end)
+    defp populate_settings(state) do
+      state
     end
 
     @spec ready?(state :: t()) :: boolean()
@@ -58,9 +49,6 @@ defmodule Catan.Lobby do
   end
 
   @type t :: State.t()
-
-  defdelegate get_setting(state, option), to: State
-  defdelegate get_setting_value(state, option), to: State
 
   def set_setting(state, option, value) do
     result = State.set_setting(state, option, value)
@@ -93,6 +81,10 @@ defmodule Catan.Lobby do
     options = Catan.Lobby.BaseOptions.options() ++ options
 
     put_in(state, [:options], options)
+  end
+
+  defp via(id) do
+    Catan.GameCoordinator.via(id, :lobby)
   end
 
   ## Impls
@@ -128,12 +120,19 @@ defmodule Catan.Lobby do
 
   @impl true
   def handle_call({:add_player, player}, _from, state) do
-    if length(state.players) < get_setting_value(state, :max_players) do
-      state = update_in(state, [:players], &[player | &1])
+    if length(state.players) < state.settings["max_players"] do
+      state =
+        update_in(state, [:players], fn players ->
+          if player in players do
+            players
+          else
+            [player | players]
+          end
+        end)
 
       {:reply, :ok, state}
     else
-      {:reply, :error, :lobby_full}
+      {:reply, {:error, :lobby_full}, state}
     end
   end
 
@@ -145,6 +144,11 @@ defmodule Catan.Lobby do
       end)
 
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:get_players}, _from, state) do
+    {:reply, state.players, state}
   end
 
   @impl true
@@ -170,17 +174,61 @@ defmodule Catan.Lobby do
   end
 
   @impl true
-  def handle_call({:update_settings, _whatever}, _from, state) do
-    {:reply, :nyi, state}
-  end
-
-  @impl true
-  def handle_call(:get_options, _from, state) do
+  def handle_call({:get_options}, _from, state) do
     {:reply, state.options, state}
   end
 
+  @impl true
+  def handle_call({:get_settings}, _from, state) do
+    {:reply, Map.put(state.settings, "name", state.name), state}
+  end
+
+  # Public
+
   def get_options(id) do
-    GenServer.call(Catan.GameCoordinator.via(id, :lobby), :get_options)
+    GenServer.call(via(id), {:get_options})
+  end
+
+  def get_settings(id) do
+    GenServer.call(via(id), {:get_settings})
+  end
+
+  def get_lobby_info(id) do
+    GenServer.call(via(id), {:get_lobby_info})
+  end
+
+  def add_player(id, player) do
+    GenServer.call(via(id), {:add_player, player})
+  end
+
+  def remove_player(id, player) do
+    GenServer.call(via(id), {:remove_player, player})
+  end
+
+  def get_players(id) do
+    GenServer.call(via(id), {:get_players})
+  end
+
+  # Pubsub
+
+  @impl true
+  def handle_info({:lobby_option_update, {_id, changes}}, state) do
+    # Logger.alert("lobby #{id} got changes #{inspect(changes)}\nHave state: #{inspect(state)}")
+    {changes, state} =
+      Map.pop(changes, "name")
+      |> case do
+        {nil, changes} -> {changes, state}
+        {name, changes} -> {changes, put_in(state.name, name)}
+      end
+
+    state = update_in(state.settings, &Map.merge(&1, changes))
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(event, socket) do
+    Logger.debug("#{__MODULE__} not handling #{inspect(event)}")
+    {:noreply, socket}
   end
 end
 
@@ -191,12 +239,6 @@ defmodule Catan.Lobby.BaseOptions do
 
   def options do
     [
-      LobbyOption.new(
-        name: :lobby_name,
-        display_name: "Lobby name",
-        type: :text,
-        default: "New Lobby"
-      ),
       LobbyOption.new(
         name: :private_game,
         display_name: "Private game",

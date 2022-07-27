@@ -5,15 +5,30 @@
     Game id: <%= @game_id %>
 </p>
 
+<h3>Players</h3>
+<ol>
+  <%= for player <- Enum.reverse(@players) do %>
+    <li><%= player.name %></li>
+  <% end %>
+</ol>
+
 <h3>Settings</h3>
 
 <.form let={f} for={:lobby_options} phx-change="validate">
+  <%= label f, "Lobby name" %>
+  <!-- TODO: add a blur event or something -->
+  <%= text_input f, :name, value: @lobby_settings["name"] %>
+
   <%= for option <- @lobby_options do %>
-    <.option form={f} option={option} />
+    <.option form={f}
+             option={option}
+             setting={Map.get(@lobby_settings, Atom.to_string(option.name))}
+    />
   <% end %>
 </.form>
 
-<h3>Input testing stuff</h3>
+<button phx-click="start_game">Start Game</button>
+<br>
 
 <%= live_redirect "Home", to: Routes.main_path(@socket, :index) %>
 <br>
