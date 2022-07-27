@@ -8,6 +8,9 @@ defmodule Catan.Game do
 
   require Logger
 
+  require Catan.PubSub.Pubsub
+  alias Catan.PubSub.Pubsub
+
   alias Catan.PubSub.Topics
   # alias Catan.LobbyOption
   alias Catan.Engine.Directive
@@ -79,7 +82,7 @@ defmodule Catan.Game do
       |> Map.put(:mode_states, mode_states)
       |> Map.update!(:game_directives, fn cur -> [directive | cur] end)
 
-    Phoenix.PubSub.subscribe(Catan.PubSub, Topics.game(state.lobby.id))
+    Pubsub.subscribe(Topics.game(state.lobby.id))
     {:ok, state, {:continue, :lobby}}
   end
 
@@ -121,7 +124,7 @@ defmodule Catan.Game do
   # end
 
   def send_pubsub(state, data) do
-    Phoenix.PubSub.broadcast!(Catan.PubSub, Topics.game(state.lobby.id), data)
+    Pubsub.broadcast(Topics.game(state.lobby.id), data)
     state
   end
 

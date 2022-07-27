@@ -1,7 +1,8 @@
 defmodule Catan.Lobby do
   require Logger
 
-  alias Catan.PubSub.Topics
+  alias Catan.PubSub.{Pubsub, Topics, Payloads}
+  require Catan.PubSub.Pubsub
 
   use GenServer, restart: :transient
 
@@ -64,11 +65,11 @@ defmodule Catan.Lobby do
   def set_setting(state, option, value) do
     result = State.set_setting(state, option, value)
 
-    Phoenix.PubSub.broadcast!(
-      Catan.PubSub,
-      Topics.lobby(state.id),
-      {:lobby_update, state}
-    )
+    # TODO: this should probably be somewhere else
+    # Pubsub.broadcast(
+    #   Topics.lobby(state.id),
+    #   Payloads.lobby(:lobby_update, state)
+    # )
 
     result
   end
@@ -79,11 +80,7 @@ defmodule Catan.Lobby do
   end
 
   def broadcast_update(%State{id: id} = _state) do
-    Phoenix.PubSub.broadcast!(
-      Catan.PubSub,
-      Topics.lobbies(),
-      {:lobby_update, id}
-    )
+    Pubsub.broadcast(Topics.lobbies(), Payloads.lobbies(:lobby_update, id))
   end
 
   def update_options(state) do
@@ -108,7 +105,7 @@ defmodule Catan.Lobby do
       State.new(id, opts)
       |> update_options()
 
-    Phoenix.PubSub.subscribe(Catan.PubSub, Topics.lobby(id))
+    Pubsub.subscribe(Topics.lobby(id))
     {:ok, state}
   end
 

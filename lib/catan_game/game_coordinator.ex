@@ -9,9 +9,10 @@ defmodule Catan.GameCoordinator do
   use GenServer
 
   require Logger
+  require Catan.PubSub.Pubsub
 
-  alias Catan.PubSub.Topics
-  alias Catan.Engine.Player, as: Player
+  alias Catan.PubSub.{Pubsub, Topics, Payloads}
+  alias Catan.Player, as: Player
 
   @type error_tuple :: {:error, atom() | {atom(), any()}}
   @type via_tuple() :: {:via, module(), {module(), String.t()}}
@@ -124,7 +125,7 @@ defmodule Catan.GameCoordinator do
           result
       end
 
-    Phoenix.PubSub.broadcast!(Catan.PubSub, Topics.lobbies(), {:new_lobby, id})
+    Pubsub.broadcast(Topics.lobbies(), Payloads.lobbies(:new_lobby, id))
 
     {:reply, result, state}
   end
@@ -136,13 +137,7 @@ defmodule Catan.GameCoordinator do
     result =
       if exists?(id, :lobby) do
         GenServer.call(via(id, :lobby), :stop)
-
-        Phoenix.PubSub.broadcast!(
-          Catan.PubSub,
-          Topics.lobbies(),
-          {:delete_lobby, id}
-        )
-
+        Pubsub.broadcast(Topics.lobbies(), Payloads.lobbies(:delete_lobby, id))
         :ok
       else
         {:error, :no_lobby}
@@ -242,12 +237,7 @@ defmodule Catan.GameCoordinator do
         {:ok, _pid} ->
           Logger.info("[GC] Starting game: #{id}")
 
-          Phoenix.PubSub.broadcast!(
-            Catan.PubSub,
-            Topics.lobbies(),
-            {:start_game, id}
-          )
-
+          Pubsub.broadcast(Topics.lobbies(), Payloads.lobbies(:start_game, id))
           {:ok, id}
 
         {:error, {:already_started, _pid}} = result ->

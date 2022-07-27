@@ -2,18 +2,22 @@ defmodule Catan.PubSub.Topics do
   @moduledoc "Topic helper functions for pubsub."
 
   @doc "lobbies"
+  @spec lobbies() :: String.t()
   def lobbies,
     do: "lobbies"
 
   @doc "lobby:{id}"
+  @spec lobby(id :: String.t()) :: String.t()
   def lobby(id) when is_binary(id),
     do: "lobby:#{id}"
 
   @doc "games"
+  @spec games() :: String.t()
   def games,
     do: "games"
 
   @doc "game:{id}"
+  @spec game(id :: String.t()) :: String.t()
   def game(id) when is_binary(id),
     do: "game:#{id}"
 end
@@ -21,14 +25,33 @@ end
 defmodule Catan.PubSub.Payloads do
   @moduledoc "Payload helper functions for pubsub."
 
-  @lobbies_actions [:new_lobby, :delete_lobby, :lobby_update]
+  @type response :: {atom(), any()}
+
+  @lobbies_actions [:new_lobby, :delete_lobby, :lobby_update, :lobbyinfo_update]
 
   @doc "`#{inspect(@lobbies_actions)}`"
-  def lobbies(action, data) when action in @lobbies_actions do
+  @spec lobbies(:new_lobby, data :: String.t()) :: response()
+  def lobbies(:new_lobby = action, data) when is_binary(data) do
     {action, data}
   end
 
-  @lobby_actions [:lobby_update, :lobby_option_update]
+  @spec lobbies(:delete_lobby, data :: String.t()) :: response()
+  def lobbies(:delete_lobby = action, data) when is_binary(data) do
+    {action, data}
+  end
+
+  @spec lobbies(:lobby_update, data :: String.t()) :: response()
+  def lobbies(:lobby_update = action, data) when is_binary(data) do
+    {action, data}
+  end
+
+  @spec lobbies(:lobbyinfo_update, data :: Catan.LobbyInfo.t()) :: response()
+  def lobbies(:lobbyinfo_update = action, data)
+      when is_struct(data, Catan.LobbyInfo) do
+    {action, data}
+  end
+
+  @lobby_actions [:lobby_update, :lobby_option_update, :player_join]
 
   @doc "`#{inspect(@lobby_actions)}`"
   def lobby(action, data) when action in @lobby_actions do

@@ -3,8 +3,11 @@ defmodule CatanWeb.LobbyLive do
 
   require Logger
 
+  alias Catan.PubSub.{Pubsub, Topics, Payloads}
+  require Catan.PubSub.Pubsub
+
   import CatanWeb.Components.LobbyOption
-  alias Catan.PubSub.Topics
+
   alias Catan.GameCoordinator, as: GC
 
   @impl true
@@ -23,7 +26,7 @@ defmodule CatanWeb.LobbyLive do
       end
 
     if connected?(socket) do
-      Phoenix.PubSub.subscribe(Catan.PubSub, Topics.lobbies())
+      Pubsub.subscribe(Topics.lobby(id))
     end
 
     {:ok, socket}

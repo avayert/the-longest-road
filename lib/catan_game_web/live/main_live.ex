@@ -3,7 +3,9 @@ defmodule CatanWeb.MainLive do
 
   require Logger
 
-  alias Catan.PubSub.Topics
+  alias Catan.PubSub.{Pubsub, Topics}
+  require Catan.PubSub.Pubsub
+
   alias Catan.GameCoordinator, as: GC
   # alias Catan.LobbyInfo
 
@@ -74,14 +76,12 @@ defmodule CatanWeb.MainLive do
         _ -> @lobby_load_style_default
       end
 
+    if connected?(socket) do
+      Pubsub.subscribe(Topics.lobbies())
+    end
+
     socket =
-      if connected?(socket) do
-        Phoenix.PubSub.subscribe(Catan.PubSub, Topics.lobbies())
-        socket
-      else
-        socket
-        # initial connect, pre ws connection
-      end
+      socket
       |> assign_new(:player_profile, fn -> session["player_profile"] end)
       |> populate_lobbies(loading_method)
 
